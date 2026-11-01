@@ -56,58 +56,67 @@ function openDetail(r) {
   $('mTitle').textContent = r.none ? `${r.name} · ${r.tf}` : `${r.name} · ${r.tf} · ${r.ind === 'Formasyon' ? r.type + ' formasyonu' : r.ind + ' ' + r.type + ' diverjansı'}`;
   const sel = $('mInd'); sel.innerHTML = ['RSI', 'MACD', 'KAIRI', '%b', 'STOCH'].map(x => `<option ${x === r.ind ? 'selected' : ''}>${x}</option>`).join('');
   const draw = () => drawChart(d, sel.value, all, pats);
-  sel.onchange = draw; draw(); coinMatrix(r); setTv(r);
+  curR = r; showTab(false); sel.onchange = draw; draw(); coinMatrix(r); setTv(r);
   $('mList').innerHTML = pats.map(x => `<li class="${x.bull === null ? '' : x.bull ? 'bull' : 'bear'}"><b>${x.name}</b> – ${x.barsAgo} mum önce, ${x.gap} mum sürdü, fiyat ${fmt(x.p1)} → ${fmt(x.p2)}</li>`).join('') + all.map(x => `<li class="${x.bull ? 'bull' : 'bear'}"><b>${x.ind}</b> – ${x.type}: fiyat ${fmt(x.p1)} → ${fmt(x.p2)}, indikatör ${fmt(x.i1)} → ${fmt(x.i2)}, ${x.gap} mum arayla, ${x.barsAgo} mum önce</li>`).join('') || '<li>Bu varlıkta başka diverjans yok.</li>';
   $('mHow').textContent = r.none ? '' : r.ind === 'Formasyon' ? ({ 'Çift Tepe': 'İki benzer tepe ve aradaki vadi: yükseliş tükeniyor olabilir; vadinin altı kırılırsa düşüş teyit olur.', 'Çift Dip': 'İki benzer dip: düşüş tükeniyor olabilir; arasındaki tepe kırılırsa yükseliş teyit olur.', 'Omuz-Baş-Omuz': 'Ortadaki tepe en yüksek: trend dönüş formasyonu; boyun çizgisi kırılırsa düşüş beklenir.', 'Ters Omuz-Baş-Omuz': 'Ortadaki dip en düşük: dönüş formasyonu; boyun çizgisi kırılırsa yükseliş beklenir.', 'Yükselen Üçgen': 'Düz direnç, yükselen dipler: genelde yukarı kırılım beklenir.', 'Alçalan Üçgen': 'Düz destek, alçalan tepeler: genelde aşağı kırılım beklenir.', 'Simetrik Üçgen': 'Daralan fiyat: yön belirsiz, kırılım yönü takip edilmeli.' }[r.type] || '')
     : r.bull
     ? 'Yükseliş diverjansı: fiyat dip noktaları birbirine göre yön ayrışması gösteriyor; satış baskısı zayıflıyor olabilir, yukarı dönüş ihtimali artar.'
     : 'Düşüş diverjansı: fiyat tepe noktaları birbirine göre yön ayrışması gösteriyor; alış gücü zayıflıyor olabilir, aşağı dönüş ihtimali artar.';
 }
+let lw = null, curR = null;
 function drawChart(d, indName, all, pats) {
-  const cv = $('cv'), dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
-  cv.width = W * dpr; cv.height = H * dpr;
-  const g = cv.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
-  const N = Math.min(d.c.length, 150), s0 = d.c.length - N;
-  const ind = DivLib.indicators(d)[indName];
-  const padL = 8, padR = 56, w = W - padL - padR, x = i => padL + (i - s0 + .5) / N * w, cw = Math.max(1, w / N * .7);
-  const pH = H * .62, iTop = pH + 18, iH = H - iTop - 6;
-  const hs = d.h.slice(s0), ls = d.l.slice(s0), pmax = Math.max(...hs), pmin = Math.min(...ls);
-  const py = v => 6 + (pmax - v) / (pmax - pmin || 1) * (pH - 12);
-  d.c.forEach((c, i) => {
-    if (i < s0) return; const up = c >= d.o[i];
-    g.strokeStyle = g.fillStyle = up ? '#3ddc97' : '#ff6b6b';
-    g.beginPath(); g.moveTo(x(i), py(d.h[i])); g.lineTo(x(i), py(d.l[i])); g.stroke();
-    g.fillRect(x(i) - cw / 2, Math.min(py(c), py(d.o[i])), cw, Math.max(1, Math.abs(py(c) - py(d.o[i]))));
+  const LC = LightweightCharts, el = $('lw');
+  if (lw) { lw.remove(); lw = null; }
+  lw = LC.createChart(el, {
+    height: 460, layout: { background: { color: '#0f1020' }, textColor: '#9a9ab8', panes: { separatorColor: '#2b2b5a' } },
+    grid: { vertLines: { color: '#1b1b3a' }, horzLines: { color: '#1b1b3a' } },
+    timeScale: { timeVisible: true, borderColor: '#2b2b5a' }, rightPriceScale: { borderColor: '#2b2b5a' }
   });
-  g.fillStyle = '#9a9ab8'; g.font = '11px sans-serif';
-  [pmax, (pmax + pmin) / 2, pmin].forEach(v => g.fillText(fmt(v), W - padR + 4, py(v) + 4));
-  const iv = ind.slice(s0).filter(v => v != null), imax = Math.max(...iv), imin = Math.min(...iv);
-  const iy = v => iTop + (imax - v) / (imax - imin || 1) * iH;
-  g.strokeStyle = '#7c5cff'; g.lineWidth = 1.5; g.beginPath(); let st = false;
-  for (let i = s0; i < d.c.length; i++) { if (ind[i] == null) continue; st ? g.lineTo(x(i), iy(ind[i])) : g.moveTo(x(i), iy(ind[i])); st = true; }
-  g.stroke(); g.lineWidth = 1;
-  g.fillStyle = '#9a9ab8'; g.fillText(indName, padL + 2, iTop - 5);
-  [imax, imin].forEach(v => g.fillText(fmt(v), W - padR + 4, iy(v) + 4));
+  const T = d.t.map(t => Math.floor(t / 1000)), n = d.c.length;
+  const ok = i => i > 0 ? T[i] > T[i - 1] : true;
+  const idx = [...Array(n).keys()].filter(ok);
+  const candles = lw.addSeries(LC.CandlestickSeries, { upColor: '#3ddc97', downColor: '#ff6b6b', borderVisible: false, wickUpColor: '#3ddc97', wickDownColor: '#ff6b6b' }, 0);
+  candles.setData(idx.map(i => ({ time: T[i], open: d.o[i], high: d.h[i], low: d.l[i], close: d.c[i] })));
+  const ind = DivLib.indicators(d)[indName];
+  const il = lw.addSeries(LC.LineSeries, { color: '#7c5cff', lineWidth: 2, priceLineVisible: false, title: indName }, 1);
+  il.setData(idx.filter(i => ind[i] != null).map(i => ({ time: T[i], value: ind[i] })));
+  const seg = (pane, p1, p2, col, style, w) => {
+    const sr = lw.addSeries(LC.LineSeries, { color: col, lineWidth: w || 2, lineStyle: style, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false }, pane);
+    sr.setData([p1, p2].sort((x, y) => x.time - y.time)); return sr;
+  };
+  all.filter(r => r.ind === indName).forEach(r => {
+    const col = r.bull ? '#3ddc97' : '#ffd166', st = r.type.includes('gizli') ? LC.LineStyle.Dotted : LC.LineStyle.Dashed, hi = r.type.startsWith('Düş');
+    const A = { time: T[r.a], value: r.p1 }, B = { time: T[r.b], value: r.p2 };
+    const ps = seg(0, A, B, col, st, 2);
+    LC.createSeriesMarkers(ps, [
+      { time: A.time, position: hi ? 'aboveBar' : 'belowBar', color: col, shape: 'circle' },
+      { time: B.time, position: hi ? 'aboveBar' : 'belowBar', color: col, shape: 'circle', text: r.type }
+    ].sort((x, y) => x.time - y.time));
+    seg(1, { time: T[r.a], value: r.i1 }, { time: T[r.b], value: r.i2 }, col, st, 2);
+  });
   (pats || []).forEach(p => {
     const col = p.bull === null ? '#9aa4ff' : p.bull ? '#3ddc97' : '#ffd166';
-    const pts = p.pts.filter(q => q.i >= s0); if (pts.length < 2) return;
-    g.strokeStyle = g.fillStyle = col; g.lineWidth = 2; g.setLineDash([]);
-    g.beginPath(); pts.forEach((q, k) => k ? g.lineTo(x(q.i), py(q.v)) : g.moveTo(x(q.i), py(q.v))); g.stroke();
-    pts.forEach(q => { g.beginPath(); g.arc(x(q.i), py(q.v), 4, 0, 7); g.fill(); });
-    g.lineWidth = 1; g.fillText(p.name, x(pts[0].i), Math.max(12, py(Math.max(...pts.map(q => q.v))) - 8));
+    const pts = p.pts.map(q => ({ time: T[q.i], value: q.v })).filter((q, k, a) => k === 0 || q.time > a[k - 1].time);
+    if (pts.length < 2) return;
+    const sr = lw.addSeries(LC.LineSeries, { color: col, lineWidth: 3, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false }, 0);
+    sr.setData(pts);
+    LC.createSeriesMarkers(sr, [{ time: pts[pts.length - 1].time, position: 'aboveBar', color: col, shape: 'arrowDown', text: p.name }]);
   });
-  // diverjans çizgileri
-  all.filter(r => r.ind === indName).forEach(r => {
-    if (r.a < s0) return;
-    const col = r.bull ? '#3ddc97' : '#ffd166', hi = r.type.startsWith('Düş');
-    g.strokeStyle = g.fillStyle = col; g.lineWidth = 2; g.setLineDash([6, 4]);
-    g.beginPath(); g.moveTo(x(r.a), py(r.p1)); g.lineTo(x(r.b), py(r.p2)); g.stroke();
-    g.beginPath(); g.moveTo(x(r.a), iy(r.i1)); g.lineTo(x(r.b), iy(r.i2)); g.stroke();
-    g.setLineDash([]); g.lineWidth = 1;
-    [[r.a, py(r.p1)], [r.b, py(r.p2)], [r.a, iy(r.i1)], [r.b, iy(r.i2)]].forEach(([i, y]) => { g.beginPath(); g.arc(x(i), y, 4, 0, 7); g.fill(); });
-    g.fillText(r.type, x(r.a), py(r.p1) + (hi ? -10 : 16));
-  });
+  try { lw.panes()[1].setHeight(150); } catch (e) {}
+  lw.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 150), to: n + 8 });
 }
+function showTab(tv) {
+  $('lw').hidden = tv; $('tvw').hidden = !tv; $('mInd').parentElement.hidden = tv;
+  $('tabLw').className = tv ? '' : 'on'; $('tabTv').className = tv ? 'on' : '';
+  if (!tv) return;
+  const r = curR; if (!r) return;
+  const make = () => { $('tvw').innerHTML = '<div id="tvw_in"></div>'; new TradingView.widget({ container_id: 'tvw_in', symbol: tvSymbol(r), interval: TV_IV[r.tf], theme: 'dark', locale: 'tr', width: '100%', height: 460, style: '1', hide_side_toolbar: false, allow_symbol_change: true, studies: ['RSI@tv-basicstudies', 'MACD@tv-basicstudies', 'Stochastic@tv-basicstudies'] }); };
+  if (window.TradingView) return make();
+  const sc = document.createElement('script'); sc.src = 'https://s3.tradingview.com/tv.js'; sc.onload = make;
+  sc.onerror = () => { $('tvw').textContent = 'TradingView yüklenemedi (internet / reklam engelleyici?). "TradingView\'de aç" butonunu kullan.'; };
+  document.head.appendChild(sc);
+}
+$('tabLw').onclick = () => showTab(false); $('tabTv').onclick = () => showTab(true);
 
 // ---- Matris görünümü (TradingView screener tarzı) ----
 const COLS = [['RSI', 'R'], ['MACD', 'M'], ['KAIRI', 'K'], ['%b', '%b'], ['STOCH', 'S'], ['Formasyon', 'F']];

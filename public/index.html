@@ -39,8 +39,10 @@
 <label>İndikatör <select id="mInd"></select></label><a id="tvBtn" class="tv" target="_blank" rel="noopener">TradingView'de aç ↗</a>
 <button id="pineBtn" class="pine">Pine kodunu kopyala (TradingView içinde çizgi çizer)</button>
 <input id="tvLayout" placeholder="(Opsiyonel) Kayıtlı TradingView layout linkin: tradingview.com/chart/XXXX/ — indikatörlerin açılsın">
-<canvas id="cv"></canvas>
+<div class="tabs"><button id="tabLw" class="on">Çizgili grafik</button><button id="tabTv">TradingView canlı</button></div>
+<div id="lw"></div><div id="tvw" hidden></div>
 <p id="mHow" class="note"></p><h3>Tüm zaman dilimleri</h3><div class="scroll"><table id="mMat" class="mx"></table></div><h3>Bu varlıktaki tüm diverjanslar ve formasyonlar</h3><ul id="mList"></ul></div></div>
+<script src="lightweight-charts.js"></script>
 <script src="lib.js"></script>
 <script src="app.js"></script>
 </body></html>

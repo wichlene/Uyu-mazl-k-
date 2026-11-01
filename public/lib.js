@@ -65,14 +65,15 @@
     }
     return out;
   }
+  function indicators({ h, l, c }) {
+    return { RSI: rsi(c), MACD: macd(c), KAIRI: kairi(c), '%b': percentB(c), STOCH: stoch(h, l, c) };
+  }
   // Son iki tepe/dip üzerinden normal ve gizli diverjans
   function findDivergences(ohlc, opts = {}) {
     const { pivot = 4, minGap = 5, maxGap = 80, recent = 12 } = opts;
     const { h, l, c } = ohlc, n = c.length, res = [];
     if (n < 60) return res;
-    const inds = {
-      RSI: rsi(c), MACD: macd(c), KAIRI: kairi(c), '%b': percentB(c), STOCH: stoch(h, l, c)
-    };
+    const inds = indicators(ohlc);
     const ph = pivots(h, pivot, pivot, 'high'), pl = pivots(l, pivot, pivot, 'low');
     for (const [name, v] of Object.entries(inds)) {
       const test = (piv, price, isHigh) => {
@@ -85,12 +86,12 @@
         let type = null;
         if (isHigh) { if (pUp && iDn) type = 'Düşüş (normal)'; else if (pDn && iUp) type = 'Düşüş (gizli)'; }
         else { if (pDn && iUp) type = 'Yükseliş (normal)'; else if (pUp && iDn) type = 'Yükseliş (gizli)'; }
-        if (type) res.push({ ind: name, type, bull: type.startsWith('Yük'), barsAgo: n - 1 - b, gap: b - a, p1: price[a], p2: price[b], i1: v[a], i2: v[b] });
+        if (type) res.push({ ind: name, type, bull: type.startsWith('Yük'), barsAgo: n - 1 - b, gap: b - a, a, b, p1: price[a], p2: price[b], i1: v[a], i2: v[b] });
       };
       test(ph, h, true); test(pl, l, false);
     }
     return res;
   }
-  const api = { sma, ema, rsi, macd, kairi, percentB, stoch, pivots, findDivergences };
+  const api = { indicators, sma, ema, rsi, macd, kairi, percentB, stoch, pivots, findDivergences };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.DivLib = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -19,3 +19,12 @@ table{width:100%;border-collapse:collapse;font-size:.85rem;white-space:nowrap}
 th,td{padding:.45rem .6rem;text-align:left;border-bottom:1px solid #26264a}
 tr.bull td:nth-child(5){color:#3ddc97}tr.bear td:nth-child(5){color:#ff6b6b}
 .note{font-size:.75rem;opacity:.6}
+
+tbody tr{cursor:pointer}tbody tr:hover{background:#222244}
+#modal{position:fixed;inset:0;background:#000b;z-index:9;display:flex;align-items:center;justify-content:center;padding:.5rem}
+#modal[hidden]{display:none}
+.dlg{background:#171830;border-radius:12px;padding:1rem;width:100%;max-width:900px;max-height:95vh;overflow:auto;position:relative}
+.dlg h2{font-size:1.05rem;margin:0 2rem .5rem 0}
+#close{position:absolute;right:.6rem;top:.6rem;width:auto;padding:.3rem .7rem}
+#cv{width:100%;height:420px;display:block;background:#0f1020;border-radius:8px;margin-top:.5rem}
+#mList{padding-left:1.1rem;font-size:.85rem}#mList li.bull b{color:#3ddc97}#mList li.bear b{color:#ff6b6b}

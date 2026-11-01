@@ -28,3 +28,4 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#222244}
 #close{position:absolute;right:.6rem;top:.6rem;width:auto;padding:.3rem .7rem}
 #cv{width:100%;height:420px;display:block;background:#0f1020;border-radius:8px;margin-top:.5rem}
 #mList{padding-left:1.1rem;font-size:.85rem}#mList li.bull b{color:#3ddc97}#mList li.bear b{color:#ff6b6b}
+tr.neu td:nth-child(5){color:#9aa4ff}

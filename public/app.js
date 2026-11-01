@@ -28,6 +28,7 @@ $('go').onclick = async () => {
     const d = await fetch(`/api/candles?src=${it.src}&symbol=${encodeURIComponent(it.symbol)}&tf=${t}`).then(r => r.json());
     if (!d.c) return;
     store.set(it.symbol + '|' + t, d);
+    for (const x of DivLib.findPatterns(d)) results.push({ ind: 'Formasyon', type: x.name, bull: x.bull, barsAgo: x.barsAgo, gap: x.gap, p1: x.p1, p2: x.p2, i1: null, i2: null, pts: x.pts, market: it.market, name: it.name, symbol: it.symbol, tf: t });
     for (const x of DivLib.findDivergences({ h: d.h, l: d.l, c: d.c })) results.push({ ...x, market: it.market, name: it.name, symbol: it.symbol, tf: t });
   });
   let done = 0; $('bar').hidden = false; $('bar').max = jobs.length;
@@ -37,9 +38,9 @@ $('go').onclick = async () => {
 };
 function render() {
   const d = $('fDir').value, k = $('fKind').value, ind = $('fInd').value, q = $('fQ').value.toLowerCase();
-  const rows = results.filter(r => (!d || (d === 'bull') === r.bull) && (!k || r.type.includes(k)) && (!ind || r.ind === ind) && (!q || r.name.toLowerCase().includes(q)))
+  const rows = results.filter(r => (!d || (d === 'bull' ? r.bull === true : r.bull === false)) && (!k || (r.ind !== 'Formasyon' && r.type.includes(k))) && (!ind || r.ind === ind) && (!q || r.name.toLowerCase().includes(q)))
     .sort((a, b) => a.barsAgo - b.barsAgo);
-  $('tbl').tBodies[0].innerHTML = rows.map((r, i) => `<tr data-i="${results.indexOf(r)}" class="${r.bull ? 'bull' : 'bear'}"><td>${r.market}</td><td>${r.name}</td><td>${r.tf}</td><td>${r.ind}</td><td>${r.type}</td><td>${r.barsAgo}</td><td>${fmt(r.p1)} → ${fmt(r.p2)}</td><td>${fmt(r.i1)} → ${fmt(r.i2)}</td></tr>`).join('');
+  $('tbl').tBodies[0].innerHTML = rows.map((r, i) => `<tr data-i="${results.indexOf(r)}" class="${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}"><td>${r.market}</td><td>${r.name}</td><td>${r.tf}</td><td>${r.ind}</td><td>${r.type}</td><td>${r.barsAgo}</td><td>${fmt(r.p1)} → ${fmt(r.p2)}</td><td>${r.i1 == null ? '-' : fmt(r.i1) + ' → ' + fmt(r.i2)}</td></tr>`).join('');
 }
 ['fDir', 'fKind', 'fInd', 'fQ'].forEach(id => $(id).oninput = render);
 
@@ -50,17 +51,18 @@ $('modal').onclick = e => { if (e.target === $('modal')) $('modal').hidden = tru
 function openDetail(r) {
   const d = store.get(r.symbol + '|' + r.tf); if (!d) return;
   $('modal').hidden = false;
-  const all = DivLib.findDivergences(d).filter(x => true);
-  $('mTitle').textContent = `${r.name} · ${r.tf} · ${r.ind} ${r.type} diverjansı`;
+  const all = DivLib.findDivergences(d), pats = DivLib.findPatterns(d);
+  $('mTitle').textContent = `${r.name} · ${r.tf} · ${r.ind === 'Formasyon' ? r.type + ' formasyonu' : r.ind + ' ' + r.type + ' diverjansı'}`;
   const sel = $('mInd'); sel.innerHTML = ['RSI', 'MACD', 'KAIRI', '%b', 'STOCH'].map(x => `<option ${x === r.ind ? 'selected' : ''}>${x}</option>`).join('');
-  const draw = () => drawChart(d, sel.value, all);
+  const draw = () => drawChart(d, sel.value, all, pats);
   sel.onchange = draw; draw();
-  $('mList').innerHTML = all.map(x => `<li class="${x.bull ? 'bull' : 'bear'}"><b>${x.ind}</b> – ${x.type}: fiyat ${fmt(x.p1)} → ${fmt(x.p2)}, indikatör ${fmt(x.i1)} → ${fmt(x.i2)}, ${x.gap} mum arayla, ${x.barsAgo} mum önce</li>`).join('') || '<li>Bu varlıkta başka diverjans yok.</li>';
-  $('mHow').textContent = r.bull
+  $('mList').innerHTML = pats.map(x => `<li class="${x.bull === null ? '' : x.bull ? 'bull' : 'bear'}"><b>${x.name}</b> – ${x.barsAgo} mum önce, ${x.gap} mum sürdü, fiyat ${fmt(x.p1)} → ${fmt(x.p2)}</li>`).join('') + all.map(x => `<li class="${x.bull ? 'bull' : 'bear'}"><b>${x.ind}</b> – ${x.type}: fiyat ${fmt(x.p1)} → ${fmt(x.p2)}, indikatör ${fmt(x.i1)} → ${fmt(x.i2)}, ${x.gap} mum arayla, ${x.barsAgo} mum önce</li>`).join('') || '<li>Bu varlıkta başka diverjans yok.</li>';
+  $('mHow').textContent = r.ind === 'Formasyon' ? ({ 'Çift Tepe': 'İki benzer tepe ve aradaki vadi: yükseliş tükeniyor olabilir; vadinin altı kırılırsa düşüş teyit olur.', 'Çift Dip': 'İki benzer dip: düşüş tükeniyor olabilir; arasındaki tepe kırılırsa yükseliş teyit olur.', 'Omuz-Baş-Omuz': 'Ortadaki tepe en yüksek: trend dönüş formasyonu; boyun çizgisi kırılırsa düşüş beklenir.', 'Ters Omuz-Baş-Omuz': 'Ortadaki dip en düşük: dönüş formasyonu; boyun çizgisi kırılırsa yükseliş beklenir.', 'Yükselen Üçgen': 'Düz direnç, yükselen dipler: genelde yukarı kırılım beklenir.', 'Alçalan Üçgen': 'Düz destek, alçalan tepeler: genelde aşağı kırılım beklenir.', 'Simetrik Üçgen': 'Daralan fiyat: yön belirsiz, kırılım yönü takip edilmeli.' }[r.type] || '')
+    : r.bull
     ? 'Yükseliş diverjansı: fiyat dip noktaları birbirine göre yön ayrışması gösteriyor; satış baskısı zayıflıyor olabilir, yukarı dönüş ihtimali artar.'
     : 'Düşüş diverjansı: fiyat tepe noktaları birbirine göre yön ayrışması gösteriyor; alış gücü zayıflıyor olabilir, aşağı dönüş ihtimali artar.';
 }
-function drawChart(d, indName, all) {
+function drawChart(d, indName, all, pats) {
   const cv = $('cv'), dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
   cv.width = W * dpr; cv.height = H * dpr;
   const g = cv.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
@@ -85,6 +87,14 @@ function drawChart(d, indName, all) {
   g.stroke(); g.lineWidth = 1;
   g.fillStyle = '#9a9ab8'; g.fillText(indName, padL + 2, iTop - 5);
   [imax, imin].forEach(v => g.fillText(fmt(v), W - padR + 4, iy(v) + 4));
+  (pats || []).forEach(p => {
+    const col = p.bull === null ? '#9aa4ff' : p.bull ? '#3ddc97' : '#ffd166';
+    const pts = p.pts.filter(q => q.i >= s0); if (pts.length < 2) return;
+    g.strokeStyle = g.fillStyle = col; g.lineWidth = 2; g.setLineDash([]);
+    g.beginPath(); pts.forEach((q, k) => k ? g.lineTo(x(q.i), py(q.v)) : g.moveTo(x(q.i), py(q.v))); g.stroke();
+    pts.forEach(q => { g.beginPath(); g.arc(x(q.i), py(q.v), 4, 0, 7); g.fill(); });
+    g.lineWidth = 1; g.fillText(p.name, x(pts[0].i), Math.max(12, py(Math.max(...pts.map(q => q.v))) - 8));
+  });
   // diverjans çizgileri
   all.filter(r => r.ind === indName).forEach(r => {
     if (r.a < s0) return;

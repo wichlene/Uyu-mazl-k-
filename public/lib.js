@@ -92,6 +92,49 @@
     }
     return res;
   }
-  const api = { indicators, sma, ema, rsi, macd, kairi, percentB, stoch, pivots, findDivergences };
+  // Klasik formasyonlar (tepe/dip noktalarından)
+  function findPatterns(ohlc, opts = {}) {
+    const { pivot = 4, recent = 20 } = opts, { h, l, c } = ohlc, n = c.length, out = [];
+    if (n < 60) return out;
+    const ph = pivots(h, pivot, pivot, 'high'), pl = pivots(l, pivot, pivot, 'low');
+    const pct = (a, b) => (b - a) / a * 100;
+    const add = (name, bull, pts) => {
+      const last = Math.max(...pts.map(p => p.i));
+      if (n - 1 - last > recent) return;
+      out.push({ name, bull, pts, barsAgo: n - 1 - last, p1: pts[0].v, p2: pts[pts.length - 1].v, gap: last - pts[0].i });
+    };
+    const H = i => ({ i, v: h[i] }), Lw = i => ({ i, v: l[i] });
+    const lowBetween = (a, b) => Math.min(...l.slice(a, b + 1)), highBetween = (a, b) => Math.max(...h.slice(a, b + 1));
+    if (ph.length >= 2) {                       // çift tepe
+      const a = ph[ph.length - 2], b = ph[ph.length - 1];
+      if (b - a >= 8 && Math.abs(pct(h[a], h[b])) < 1.5 && pct(lowBetween(a, b), h[a]) > 2) add('Çift Tepe', false, [H(a), Lw(l.indexOf(lowBetween(a, b), a)), H(b)]);
+    }
+    if (pl.length >= 2) {                       // çift dip
+      const a = pl[pl.length - 2], b = pl[pl.length - 1];
+      if (b - a >= 8 && Math.abs(pct(l[a], l[b])) < 1.5 && pct(l[a], highBetween(a, b)) > 2) add('Çift Dip', true, [Lw(a), H(h.indexOf(highBetween(a, b), a)), Lw(b)]);
+    }
+    if (ph.length >= 3) {                       // omuz-baş-omuz
+      const [a, b, d] = ph.slice(-3);
+      if (h[b] > h[a] && h[b] > h[d] && pct(h[a], h[b]) > 2 && pct(h[d], h[b]) > 2 && Math.abs(pct(h[a], h[d])) < 3) add('Omuz-Baş-Omuz', false, [H(a), H(b), H(d)]);
+    }
+    if (pl.length >= 3) {                       // ters omuz-baş-omuz
+      const [a, b, d] = pl.slice(-3);
+      if (l[b] < l[a] && l[b] < l[d] && pct(l[b], l[a]) > 2 && pct(l[b], l[d]) > 2 && Math.abs(pct(l[a], l[d])) < 3) add('Ters Omuz-Baş-Omuz', true, [Lw(a), Lw(b), Lw(d)]);
+    }
+    if (ph.length >= 3 && pl.length >= 3) {     // üçgenler
+      const hs = ph.slice(-3), ls = pl.slice(-3);
+      const hc = pct(h[hs[0]], h[hs[2]]), lc = pct(l[ls[0]], l[ls[2]]);
+      const start = Math.max(hs[0], ls[0]), end = Math.min(hs[2], ls[2]);
+      const converging = (h[hs[2]] - l[ls[2]]) < (h[hs[0]] - l[ls[0]]) * 0.85;
+      const pts = [...hs.map(H), ...ls.map(Lw)].sort((x, y) => x.i - y.i);
+      if (converging && end > start - 1) {
+        if (Math.abs(hc) < 1 && lc > 1.5) add('Yükselen Üçgen', true, pts);
+        else if (Math.abs(lc) < 1 && hc < -1.5) add('Alçalan Üçgen', false, pts);
+        else if (hc < -1.5 && lc > 1.5) add('Simetrik Üçgen', null, pts);
+      }
+    }
+    return out;
+  }
+  const api = { findPatterns, indicators, sma, ema, rsi, macd, kairi, percentB, stoch, pivots, findDivergences };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.DivLib = api;
 })(typeof self !== 'undefined' ? self : this);

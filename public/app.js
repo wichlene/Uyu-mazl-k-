@@ -56,13 +56,14 @@ function openDetail(r) {
   $('mTitle').textContent = r.none ? `${r.name} · ${r.tf}` : `${r.name} · ${r.tf} · ${r.ind === 'Formasyon' ? r.type + ' formasyonu' : r.ind + ' ' + r.type + ' diverjansı'}`;
   const sel = $('mInd'); sel.innerHTML = ['RSI', 'MACD', 'KAIRI', '%b', 'STOCH'].map(x => `<option ${x === r.ind ? 'selected' : ''}>${x}</option>`).join('');
   const draw = () => drawChart(d, sel.value, all, pats);
-  curR = r; showTab(false); sel.onchange = draw; draw(); coinMatrix(r); setTv(r);
+  curR = r; $('tfBadge').textContent = '⏱ ' + TF_TR[r.tf] + ' grafik'; showTab(false); sel.onchange = draw; draw(); coinMatrix(r); setTv(r);
   $('mList').innerHTML = pats.map(x => `<li class="${x.bull === null ? '' : x.bull ? 'bull' : 'bear'}"><b>${x.name}</b> – ${fmtFull(d.t[x.pts[0].i])} → ${fmtFull(d.t[Math.max(...x.pts.map(q => q.i))])} (${x.barsAgo} mum önce), fiyat ${fmt(x.p1)} → ${fmt(x.p2)}</li>`).join('') + all.map(x => `<li class="${x.bull ? 'bull' : 'bear'}"><b>${x.ind}</b> – ${x.type}: ${fmtFull(d.t[x.a])} → ${fmtFull(d.t[x.b])} (${x.barsAgo} mum önce), fiyat ${fmt(x.p1)} → ${fmt(x.p2)}, indikatör ${fmt(x.i1)} → ${fmt(x.i2)}</li>`).join('') || '<li>Bu varlıkta başka diverjans yok.</li>';
   $('mHow').textContent = r.none ? '' : r.ind === 'Formasyon' ? ({ 'Çift Tepe': 'İki benzer tepe ve aradaki vadi: yükseliş tükeniyor olabilir; vadinin altı kırılırsa düşüş teyit olur.', 'Çift Dip': 'İki benzer dip: düşüş tükeniyor olabilir; arasındaki tepe kırılırsa yükseliş teyit olur.', 'Omuz-Baş-Omuz': 'Ortadaki tepe en yüksek: trend dönüş formasyonu; boyun çizgisi kırılırsa düşüş beklenir.', 'Ters Omuz-Baş-Omuz': 'Ortadaki dip en düşük: dönüş formasyonu; boyun çizgisi kırılırsa yükseliş beklenir.', 'Yükselen Üçgen': 'Düz direnç, yükselen dipler: genelde yukarı kırılım beklenir.', 'Alçalan Üçgen': 'Düz destek, alçalan tepeler: genelde aşağı kırılım beklenir.', 'Simetrik Üçgen': 'Daralan fiyat: yön belirsiz, kırılım yönü takip edilmeli.' }[r.type] || '')
     : r.bull
     ? 'Yükseliş diverjansı: fiyat dip noktaları birbirine göre yön ayrışması gösteriyor; satış baskısı zayıflıyor olabilir, yukarı dönüş ihtimali artar.'
     : 'Düşüş diverjansı: fiyat tepe noktaları birbirine göre yön ayrışması gösteriyor; alış gücü zayıflıyor olabilir, aşağı dönüş ihtimali artar.';
 }
+const TF_TR = { '5m': '5 dakikalık', '15m': '15 dakikalık', '1h': '1 saatlik', '4h': '4 saatlik', '1d': 'Günlük', '1w': 'Haftalık', '1M': 'Aylık' };
 let lw = null, curR = null;
 function drawChart(d, indName, all, pats) {
   const LC = LightweightCharts, el = $('lw');
@@ -80,7 +81,7 @@ function drawChart(d, indName, all, pats) {
   const candles = lw.addSeries(LC.CandlestickSeries, { upColor: '#3ddc97', downColor: '#ff6b6b', borderVisible: false, wickUpColor: '#3ddc97', wickDownColor: '#ff6b6b' }, 0);
   candles.setData(idx.map(i => ({ time: T[i], open: d.o[i], high: d.h[i], low: d.l[i], close: d.c[i] })));
   const byTime = new Map(idx.map(i => [T[i], i]));
-  const legend = i => { $('lwLeg').innerHTML = `<b>${fmtFull(d.t[i])}</b> · A ${fmt(d.o[i])} · Y ${fmt(d.h[i])} · D ${fmt(d.l[i])} · K ${fmt(d.c[i])}`; };
+  const legend = i => { $('lwLeg').innerHTML = `<b>${TF_TR[curR.tf]}</b> · <b>${fmtFull(d.t[i])}</b> · A ${fmt(d.o[i])} · Y ${fmt(d.h[i])} · D ${fmt(d.l[i])} · K ${fmt(d.c[i])}`; };
   legend(n - 1);
   lw.subscribeCrosshairMove(pr => { const i = pr.time != null ? byTime.get(pr.time) : null; legend(i != null ? i : n - 1); });
   const ind = DivLib.indicators(d)[indName];
@@ -182,7 +183,7 @@ async function coinMatrix(r) {
     const s = sigs(r.symbol, t), d = store.get(r.symbol + '|' + t);
     if (!s) return `<tr class="rn"><td class="sym">${t}</td><td class="px">-</td>${COLS.map(() => '<td class="c"></td>').join('')}<td class="tm">veri yok</td></tr>`;
     const v = Object.values(s), latest = v.length ? Math.max(...v.map(x => x.t)) : 0;
-    return `<tr class="${rowCls(s)}" data-tf="${t}"><td class="sym">${t}</td><td class="px">${fmt(d.c[d.c.length - 1])}</td>${COLS.map(c => cellHtml(s[c[0]])).join('')}<td class="tm">${latest ? fmtTime(latest, t) : '-'}</td></tr>`;
+    return `<tr class="${rowCls(s)}${t === r.tf ? ' cur' : ''}" data-tf="${t}"><td class="sym">${t === r.tf ? '▶ ' : ''}${t}</td><td class="px">${fmt(d.c[d.c.length - 1])}</td>${COLS.map(c => cellHtml(s[c[0]])).join('')}<td class="tm">${latest ? fmtTime(latest, t) : '-'}</td></tr>`;
   }).join('') + '</tbody>';
   el.onclick = e => { const tr = e.target.closest('tr[data-tf]'); if (tr) openDetail(pick(r.symbol, tr.dataset.tf)); };
 }

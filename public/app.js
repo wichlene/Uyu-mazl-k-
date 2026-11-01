@@ -188,3 +188,9 @@ function setTv(r) {
   };
   inp.oninput = upd; upd();
 }
+
+$('pineBtn').onclick = async () => {
+  const code = await fetch('/divergence.pine').then(r => r.text());
+  try { await navigator.clipboard.writeText(code); $('pineBtn').textContent = 'Kopyalandı ✓ TradingView > Pine Editor > yapıştır > Grafiğe ekle'; }
+  catch (e) { prompt('Kodu kopyala:', code); }
+};

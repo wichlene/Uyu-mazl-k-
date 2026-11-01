@@ -1,0 +1,97 @@
+//@version=5
+indicator("Uyuşmazlık Diverjans (RSI/MACD/KAIRI/%b/Stoch)", overlay=true, max_lines_count=200, max_labels_count=200)
+
+pv        = input.int(4, "Pivot genişliği (sol=sağ)", minval=2)
+minGap    = input.int(5, "İki tepe/dip arası min mum", minval=1)
+maxGap    = input.int(80, "İki tepe/dip arası max mum", minval=5)
+showHid   = input.bool(true, "Gizli diverjansı da göster")
+useRSI    = input.bool(true, "RSI")
+useMACD   = input.bool(true, "MACD")
+useKAIRI  = input.bool(true, "KAIRI")
+usePB     = input.bool(true, "%b (Bollinger)")
+useSTOCH  = input.bool(true, "Stokastik")
+showTable = input.bool(true, "Özet tablosunu göster")
+
+// --- İndikatörler ---
+rsiV   = ta.rsi(close, 14)
+[macdL, _s, _h] = ta.macd(close, 12, 26, 9)
+smaC   = ta.sma(close, 14)
+kairiV = (close - smaC) / smaC * 100
+[_m, bbU, bbL] = ta.bb(close, 20, 2)
+pbV    = (close - bbL) / (bbU - bbL)
+stochV = ta.sma(ta.sma(ta.stoch(close, high, low, 14), 3), 3)
+
+names   = array.from("RSI", "MACD", "KAIRI", "%b", "STOCH")
+enabled = array.from(useRSI, useMACD, useKAIRI, usePB, useSTOCH)
+vals    = array.from(rsiV[pv], macdL[pv], kairiV[pv], pbV[pv], stochV[pv])
+
+// Durum: [0]=önceki pivot, [1]=son pivot
+var int[]   hBars  = array.new_int(2, na)
+var float[] hPrice = array.new_float(2, na)
+var float[] hInds  = array.new_float(10, na)
+var int[]   lBars  = array.new_int(2, na)
+var float[] lPrice = array.new_float(2, na)
+var float[] lInds  = array.new_float(10, na)
+var string[] sigTxt = array.new_string(5, "-")
+var int[]    sigBar = array.new_int(5, na)
+
+process(bool isHigh, int[] bars, float[] prices, float[] inds, float newPrice) =>
+    array.set(bars, 0, array.get(bars, 1))
+    array.set(prices, 0, array.get(prices, 1))
+    for i = 0 to 4
+        array.set(inds, i, array.get(inds, i + 5))
+        array.set(inds, i + 5, array.get(vals, i))
+    array.set(bars, 1, bar_index - pv)
+    array.set(prices, 1, newPrice)
+    barA = array.get(bars, 0)
+    barB = array.get(bars, 1)
+    pA = array.get(prices, 0)
+    pB = array.get(prices, 1)
+    if not na(barA) and (barB - barA) >= minGap and (barB - barA) <= maxGap
+        string regTxt = ""
+        string hidTxt = ""
+        for i = 0 to 4
+            if array.get(enabled, i)
+                a = array.get(inds, i)
+                b = array.get(inds, i + 5)
+                if not na(a) and not na(b)
+                    reg = isHigh ? (pB > pA and b < a) : (pB < pA and b > a)
+                    hid = showHid and (isHigh ? (pB < pA and b > a) : (pB > pA and b < a))
+                    nm = array.get(names, i)
+                    if reg
+                        regTxt += (regTxt == "" ? "" : ", ") + nm
+                        array.set(sigTxt, i, (isHigh ? "Düşüş" : "Yükseliş") + " (normal)")
+                        array.set(sigBar, i, barB)
+                    if hid
+                        hidTxt += (hidTxt == "" ? "" : ", ") + nm
+                        array.set(sigTxt, i, (isHigh ? "Düşüş" : "Yükseliş") + " (gizli)")
+                        array.set(sigBar, i, barB)
+        col = isHigh ? color.orange : color.lime
+        if regTxt != ""
+            line.new(barA, pA, barB, pB, xloc.bar_index, extend.none, col, line.style_solid, 2)
+            label.new(barB, pB, (isHigh ? "Düşüş: " : "Yükseliş: ") + regTxt, xloc.bar_index, yloc.price, color.new(col, 80), col, isHigh ? label.style_label_down : label.style_label_up, size.small)
+        if hidTxt != ""
+            line.new(barA, pA, barB, pB, xloc.bar_index, extend.none, col, line.style_dotted, 2)
+            label.new(barB, pB, (isHigh ? "Düşüş gizli: " : "Yükseliş gizli: ") + hidTxt, xloc.bar_index, yloc.price, color.new(col, 85), col, isHigh ? label.style_label_down : label.style_label_up, size.small)
+    true
+
+ph = ta.pivothigh(high, pv, pv)
+pl = ta.pivotlow(low, pv, pv)
+if not na(ph)
+    process(true, hBars, hPrice, hInds, ph)
+if not na(pl)
+    process(false, lBars, lPrice, lInds, pl)
+
+// --- Özet tablosu ---
+var table tbl = table.new(position.top_right, 3, 6, border_width=1)
+if showTable and barstate.islast
+    table.cell(tbl, 0, 0, "İndikatör", text_color=color.white, bgcolor=color.new(color.gray, 40))
+    table.cell(tbl, 1, 0, "Son diverjans", text_color=color.white, bgcolor=color.new(color.gray, 40))
+    table.cell(tbl, 2, 0, "Mum önce", text_color=color.white, bgcolor=color.new(color.gray, 40))
+    for i = 0 to 4
+        s = array.get(sigTxt, i)
+        bb = array.get(sigBar, i)
+        c = str.contains(s, "Yükseliş") ? color.new(color.lime, 60) : str.contains(s, "Düşüş") ? color.new(color.orange, 60) : color.new(color.gray, 70)
+        table.cell(tbl, 0, i + 1, array.get(names, i), text_color=color.white, bgcolor=c)
+        table.cell(tbl, 1, i + 1, s, text_color=color.white, bgcolor=c)
+        table.cell(tbl, 2, i + 1, na(bb) ? "-" : str.tostring(bar_index - bb), text_color=color.white, bgcolor=c)

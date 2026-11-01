@@ -17,6 +17,13 @@
     <div id="status"></div><progress id="bar" value="0" max="1" hidden></progress>
   </section>
   <section class="card">
+    <div class="tabs"><button id="vList" class="on">Liste</button><button id="vMat">Matris</button></div>
+    <div id="matView" hidden>
+      <label class="mxsel">Zaman dilimi <select id="mxTf"></select></label>
+      <div class="scroll"><table id="mx" class="mx"></table></div>
+      <p class="note">R=RSI · M=MACD · K=KAIRI · %b=Bollinger · S=Stokastik · F=Formasyon. Mavi: yükseliş, kırmızı: düşüş, mor: nötr. Satıra bas, detay açılsın.</p>
+    </div>
+    <div id="listView">
     <div class="filters">
       <label>Yön <select id="fDir"><option value="">Hepsi</option><option value="bull">Yükseliş</option><option value="bear">Düşüş</option></select></label>
       <label>Tür <select id="fKind"><option value="">Hepsi</option><option value="normal">Normal</option><option value="gizli">Gizli</option></select></label>
@@ -24,12 +31,13 @@
       <label>Ara <input id="fQ" placeholder="BTC, THYAO..."></label>
     </div>
     <div class="scroll"><table id="tbl"><thead><tr><th>Piyasa</th><th>Sembol</th><th>Dilim</th><th>İndikatör</th><th>Diverjans</th><th>Kaç mum önce</th><th>Fiyat (eski → yeni)</th><th>İnd. (eski → yeni)</th></tr></thead><tbody></tbody></table></div>
+    </div>
     <p class="note">Bilgi amaçlıdır, yatırım tavsiyesi değildir. Diverjans tek başına al/sat sinyali değildir.</p>
   </section>
 </main>
 <div id="modal" hidden><div class="dlg"><button id="close">✕</button><h2 id="mTitle"></h2>
 <label>İndikatör <select id="mInd"></select></label><canvas id="cv"></canvas>
-<p id="mHow" class="note"></p><h3>Bu varlıktaki tüm diverjanslar</h3><ul id="mList"></ul></div></div>
+<p id="mHow" class="note"></p><h3>Tüm zaman dilimleri</h3><div class="scroll"><table id="mMat" class="mx"></table></div><h3>Bu varlıktaki tüm diverjanslar ve formasyonlar</h3><ul id="mList"></ul></div></div>
 <script src="lib.js"></script>
 <script src="app.js"></script>
 </body></html>

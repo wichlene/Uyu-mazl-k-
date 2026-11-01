@@ -29,3 +29,17 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#222244}
 #cv{width:100%;height:420px;display:block;background:#0f1020;border-radius:8px;margin-top:.5rem}
 #mList{padding-left:1.1rem;font-size:.85rem}#mList li.bull b{color:#3ddc97}#mList li.bear b{color:#ff6b6b}
 tr.neu td:nth-child(5){color:#9aa4ff}
+
+.tabs{display:flex;gap:.5rem;margin-bottom:.8rem}.tabs button{width:auto;padding:.5rem 1rem;background:#222244}.tabs button.on{background:#7c5cff}
+.mxsel{display:block;font-size:.8rem;margin-bottom:.6rem}
+table.mx{border-collapse:separate;border-spacing:2px;font-size:.78rem}
+table.mx th{background:#2b2b5a;padding:.35rem .5rem;text-align:center;border:0}
+table.mx td{border:0;padding:.3rem .5rem}
+table.mx tbody tr{cursor:pointer}
+table.mx td.sym,table.mx td.px{font-weight:700;text-align:center;color:#111}
+tr.rg td.sym,tr.rg td.px,tr.rg td.tm{background:#7be32b}
+tr.rr td.sym,tr.rr td.px,tr.rr td.tm{background:#ff6b6b}
+tr.ro td.sym,tr.ro td.px,tr.ro td.tm{background:#f0a040}
+tr.rn td.sym,tr.rn td.px,tr.rn td.tm{background:#7f8fb0}
+td.tm{text-align:center;font-weight:700;color:#111}
+td.c{background:#8a97b5;min-width:30px}td.c.bull{background:#1e4dff}td.c.bear{background:#ff3b52}td.c.neu{background:#a070ff}

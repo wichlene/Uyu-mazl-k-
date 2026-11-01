@@ -1,7 +1,7 @@
 const MARKETS = ['Kripto', 'NASDAQ', 'BIST', 'Emtia'];
 const TFS = ['5m', '15m', '1h', '4h', '1d', '1w', '1M'];
 const $ = id => document.getElementById(id);
-const results = [], store = new Map(), items = new Map(), sigCache = new Map();
+const results = [], store = new Map(), itemMap = new Map(), sigCache = new Map();
 function chips(el, list, on) {
   el.innerHTML = list.map(x => `<label class="chip"><input type="checkbox" value="${x}" ${on.includes(x) ? 'checked' : ''}>${x}</label>`).join('');
 }
@@ -19,7 +19,7 @@ async function pool(tasks, n, step) {
 $('go').onclick = async () => {
   const mk = picked($('markets')), tf = picked($('tfs'));
   if (!mk.length || !tf.length) return alert('En az bir piyasa ve zaman dilimi seç');
-  $('go').disabled = true; results.length = 0; store.clear(); sigCache.clear(); items.clear(); render();
+  $('go').disabled = true; results.length = 0; store.clear(); sigCache.clear(); itemMap.clear(); render();
   $('status').textContent = 'Liste alınıyor...';
   const uni = await fetch('/api/universe').then(r => r.json());
   const items = uni.items.filter(x => mk.includes(x.market));
@@ -27,7 +27,7 @@ $('go').onclick = async () => {
   for (const it of items) for (const t of tf) jobs.push(async () => {
     const d = await fetch(`/api/candles?src=${it.src}&symbol=${encodeURIComponent(it.symbol)}&tf=${t}`).then(r => r.json());
     if (!d.c) return;
-    store.set(it.symbol + '|' + t, d); items.set(it.symbol, it);
+    store.set(it.symbol + '|' + t, d); itemMap.set(it.symbol, it);
     for (const x of DivLib.findPatterns(d)) results.push({ ind: 'Formasyon', type: x.name, bull: x.bull, barsAgo: x.barsAgo, gap: x.gap, p1: x.p1, p2: x.p2, i1: null, i2: null, pts: x.pts, market: it.market, name: it.name, symbol: it.symbol, tf: t });
     for (const x of DivLib.findDivergences({ h: d.h, l: d.l, c: d.c })) results.push({ ...x, market: it.market, name: it.name, symbol: it.symbol, tf: t });
   });
@@ -127,7 +127,7 @@ function rowCls(o) {
 }
 const head = first => `<thead><tr>${first}${COLS.map(c => `<th title="${c[0]}">${c[1]}</th>`).join('')}<th>Sinyal zamanı</th></tr></thead>`;
 function pick(sym, tf) {
-  const it = items.get(sym);
+  const it = itemMap.get(sym);
   const r = results.filter(x => x.symbol === sym && x.tf === tf).sort((a, b) => a.barsAgo - b.barsAgo)[0];
   if (r) return r;
   const o = sigs(sym, tf) || {}, best = Object.entries(o).sort((a, b) => a[1].barsAgo - b[1].barsAgo)[0];
@@ -140,7 +140,7 @@ function fillTfs(tf) {
 }
 function renderMatrix() {
   const tf = $('mxTf').value, q = $('fQ').value.toLowerCase();
-  const rows = [...items.values()].filter(it => !q || it.name.toLowerCase().includes(q)).map(it => {
+  const rows = [...itemMap.values()].filter(it => !q || it.name.toLowerCase().includes(q)).map(it => {
     const d = store.get(it.symbol + '|' + tf); if (!d) return null;
     const s = sigs(it.symbol, tf), v = Object.values(s);
     return { it, d, s, latest: v.length ? Math.max(...v.map(x => x.t)) : 0 };
@@ -155,7 +155,7 @@ $('vMat').onclick = () => { $('listView').hidden = true; $('matView').hidden = f
 
 let mToken = 0;
 async function coinMatrix(r) {
-  const my = ++mToken, it = items.get(r.symbol), el = $('mMat');
+  const my = ++mToken, it = itemMap.get(r.symbol), el = $('mMat');
   el.innerHTML = '<tbody><tr><td>Zaman dilimleri yükleniyor...</td></tr></tbody>';
   await Promise.all(TFS.filter(t => !store.has(r.symbol + '|' + t)).map(async t => {
     try { const d = await fetch(`/api/candles?src=${it.src}&symbol=${encodeURIComponent(r.symbol)}&tf=${t}`).then(x => x.json()); if (d.c) store.set(r.symbol + '|' + t, d); } catch (e) {}

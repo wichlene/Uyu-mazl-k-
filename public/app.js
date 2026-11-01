@@ -56,7 +56,7 @@ function openDetail(r) {
   $('mTitle').textContent = r.none ? `${r.name} · ${r.tf}` : `${r.name} · ${r.tf} · ${r.ind === 'Formasyon' ? r.type + ' formasyonu' : r.ind + ' ' + r.type + ' diverjansı'}`;
   const sel = $('mInd'); sel.innerHTML = ['RSI', 'MACD', 'KAIRI', '%b', 'STOCH'].map(x => `<option ${x === r.ind ? 'selected' : ''}>${x}</option>`).join('');
   const draw = () => drawChart(d, sel.value, all, pats);
-  sel.onchange = draw; draw(); coinMatrix(r);
+  sel.onchange = draw; draw(); coinMatrix(r); setTv(r);
   $('mList').innerHTML = pats.map(x => `<li class="${x.bull === null ? '' : x.bull ? 'bull' : 'bear'}"><b>${x.name}</b> – ${x.barsAgo} mum önce, ${x.gap} mum sürdü, fiyat ${fmt(x.p1)} → ${fmt(x.p2)}</li>`).join('') + all.map(x => `<li class="${x.bull ? 'bull' : 'bear'}"><b>${x.ind}</b> – ${x.type}: fiyat ${fmt(x.p1)} → ${fmt(x.p2)}, indikatör ${fmt(x.i1)} → ${fmt(x.i2)}, ${x.gap} mum arayla, ${x.barsAgo} mum önce</li>`).join('') || '<li>Bu varlıkta başka diverjans yok.</li>';
   $('mHow').textContent = r.none ? '' : r.ind === 'Formasyon' ? ({ 'Çift Tepe': 'İki benzer tepe ve aradaki vadi: yükseliş tükeniyor olabilir; vadinin altı kırılırsa düşüş teyit olur.', 'Çift Dip': 'İki benzer dip: düşüş tükeniyor olabilir; arasındaki tepe kırılırsa yükseliş teyit olur.', 'Omuz-Baş-Omuz': 'Ortadaki tepe en yüksek: trend dönüş formasyonu; boyun çizgisi kırılırsa düşüş beklenir.', 'Ters Omuz-Baş-Omuz': 'Ortadaki dip en düşük: dönüş formasyonu; boyun çizgisi kırılırsa yükseliş beklenir.', 'Yükselen Üçgen': 'Düz direnç, yükselen dipler: genelde yukarı kırılım beklenir.', 'Alçalan Üçgen': 'Düz destek, alçalan tepeler: genelde aşağı kırılım beklenir.', 'Simetrik Üçgen': 'Daralan fiyat: yön belirsiz, kırılım yönü takip edilmeli.' }[r.type] || '')
     : r.bull
@@ -131,7 +131,7 @@ function pick(sym, tf) {
   const r = results.filter(x => x.symbol === sym && x.tf === tf).sort((a, b) => a.barsAgo - b.barsAgo)[0];
   if (r) return r;
   const o = sigs(sym, tf) || {}, best = Object.entries(o).sort((a, b) => a[1].barsAgo - b[1].barsAgo)[0];
-  return { name: it.name, symbol: sym, tf, ind: best ? best[0] : 'RSI', type: '', bull: best ? best[1].bull : true, none: true };
+  return { market: it.market, name: it.name, symbol: sym, tf, ind: best ? best[0] : 'RSI', type: '', bull: best ? best[1].bull : true, none: true };
 }
 function fillTfs(tf) {
   const sel = $('mxTf'), cur = sel.value;
@@ -168,4 +168,23 @@ async function coinMatrix(r) {
     return `<tr class="${rowCls(s)}" data-tf="${t}"><td class="sym">${t}</td><td class="px">${fmt(d.c[d.c.length - 1])}</td>${COLS.map(c => cellHtml(s[c[0]])).join('')}<td class="tm">${latest ? fmtTime(latest, t) : '-'}</td></tr>`;
   }).join('') + '</tbody>';
   el.onclick = e => { const tr = e.target.closest('tr[data-tf]'); if (tr) openDetail(pick(r.symbol, tr.dataset.tf)); };
+}
+
+// ---- TradingView bağlantısı ----
+const TV_FUT = { 'GC=F': 'COMEX:GC1!', 'SI=F': 'COMEX:SI1!', 'HG=F': 'COMEX:HG1!', 'PL=F': 'NYMEX:PL1!', 'PA=F': 'NYMEX:PA1!', 'CL=F': 'NYMEX:CL1!', 'BZ=F': 'NYMEX:BZ1!', 'NG=F': 'NYMEX:NG1!', 'HO=F': 'NYMEX:HO1!', 'RB=F': 'NYMEX:RB1!', 'ZW=F': 'CBOT:ZW1!', 'ZC=F': 'CBOT:ZC1!', 'ZS=F': 'CBOT:ZS1!', 'SB=F': 'ICEUS:SB1!', 'KC=F': 'ICEUS:KC1!', 'CC=F': 'ICEUS:CC1!', 'CT=F': 'ICEUS:CT1!', 'OJ=F': 'ICEUS:OJ1!', 'LE=F': 'CME:LE1!', 'HE=F': 'CME:HE1!' };
+const TV_IV = { '5m': '5', '15m': '15', '1h': '60', '4h': '240', '1d': 'D', '1w': 'W', '1M': 'M' };
+function tvSymbol(r) {
+  if (r.market === 'Kripto') return 'BINANCE:' + r.symbol;
+  if (r.market === 'Emtia') return TV_FUT[r.symbol] || r.symbol;
+  if (r.market === 'BIST') return 'BIST:' + r.name;
+  return 'NASDAQ:' + r.name;
+}
+function setTv(r) {
+  const inp = $('tvLayout'); inp.value = localStorage.getItem('tvLayout') || '';
+  const upd = () => {
+    const m = inp.value.match(/chart\/([A-Za-z0-9]+)/), id = m && m[1];
+    localStorage.setItem('tvLayout', inp.value.trim());
+    $('tvBtn').href = `https://www.tradingview.com/chart/${id ? id + '/' : ''}?symbol=${encodeURIComponent(tvSymbol(r))}&interval=${TV_IV[r.tf]}`;
+  };
+  inp.oninput = upd; upd();
 }

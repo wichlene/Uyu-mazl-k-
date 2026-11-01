@@ -43,3 +43,6 @@ tr.ro td.sym,tr.ro td.px,tr.ro td.tm{background:#f0a040}
 tr.rn td.sym,tr.rn td.px,tr.rn td.tm{background:#7f8fb0}
 td.tm{text-align:center;font-weight:700;color:#111}
 td.c{background:#8a97b5;min-width:30px}td.c.bull{background:#1e4dff}td.c.bear{background:#ff3b52}td.c.neu{background:#a070ff}
+
+a.tv{display:inline-block;margin:.3rem 0;padding:.6rem 1rem;border-radius:10px;background:#2962ff;color:#fff;font-weight:600;text-decoration:none}
+#tvLayout{display:block;width:100%;margin:.3rem 0;padding:.5rem;border-radius:6px;border:1px solid #333;background:#0f1020;color:#fff;font-size:.8rem}

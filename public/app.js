@@ -28,8 +28,8 @@ $('go').onclick = async () => {
     const d = await fetch(`/api/candles?src=${it.src}&symbol=${encodeURIComponent(it.symbol)}&tf=${t}`).then(r => r.json());
     if (!d.c) return;
     store.set(it.symbol + '|' + t, d); itemMap.set(it.symbol, it);
-    for (const x of DivLib.findPatterns(d)) results.push({ ind: 'Formasyon', type: x.name, bull: x.bull, barsAgo: x.barsAgo, gap: x.gap, p1: x.p1, p2: x.p2, i1: null, i2: null, pts: x.pts, market: it.market, name: it.name, symbol: it.symbol, tf: t });
-    for (const x of DivLib.findDivergences({ h: d.h, l: d.l, c: d.c })) results.push({ ...x, market: it.market, name: it.name, symbol: it.symbol, tf: t });
+    for (const x of DivLib.findPatterns(d)) results.push({ ind: 'Formasyon', type: x.name, bull: x.bull, barsAgo: x.barsAgo, gap: x.gap, p1: x.p1, p2: x.p2, i1: null, i2: null, pts: x.pts, time: d.t[Math.max(...x.pts.map(q => q.i))], market: it.market, name: it.name, symbol: it.symbol, tf: t });
+    for (const x of DivLib.findDivergences({ h: d.h, l: d.l, c: d.c })) results.push({ ...x, time: d.t[x.b], market: it.market, name: it.name, symbol: it.symbol, tf: t });
   });
   let done = 0; $('bar').hidden = false; $('bar').max = jobs.length;
   await pool(jobs, 8, () => { $('bar').value = ++done; $('status').textContent = `Taranıyor ${done}/${jobs.length} · bulunan: ${results.length}`; if (done % 10 === 0) render(); });
@@ -41,7 +41,7 @@ function render() {
   const d = $('fDir').value, k = $('fKind').value, ind = $('fInd').value, q = $('fQ').value.toLowerCase();
   const rows = results.filter(r => (!d || (d === 'bull' ? r.bull === true : r.bull === false)) && (!k || (r.ind !== 'Formasyon' && r.type.includes(k))) && (!ind || r.ind === ind) && (!q || r.name.toLowerCase().includes(q)))
     .sort((a, b) => a.barsAgo - b.barsAgo);
-  $('tbl').tBodies[0].innerHTML = rows.map((r, i) => `<tr data-i="${results.indexOf(r)}" class="${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}"><td>${r.market}</td><td>${r.name}</td><td>${r.tf}</td><td>${r.ind}</td><td>${r.type}</td><td>${r.barsAgo}</td><td>${fmt(r.p1)} → ${fmt(r.p2)}</td><td>${r.i1 == null ? '-' : fmt(r.i1) + ' → ' + fmt(r.i2)}</td></tr>`).join('');
+  $('tbl').tBodies[0].innerHTML = rows.map((r, i) => `<tr data-i="${results.indexOf(r)}" class="${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}"><td>${r.market}</td><td>${r.name}</td><td>${r.tf}</td><td>${r.ind}</td><td>${r.type}</td><td>${r.time ? fmtTime(r.time, r.tf) : '-'}</td><td>${r.barsAgo}</td><td>${fmt(r.p1)} → ${fmt(r.p2)}</td><td>${r.i1 == null ? '-' : fmt(r.i1) + ' → ' + fmt(r.i2)}</td></tr>`).join('');
 }
 ['fDir', 'fKind', 'fInd', 'fQ'].forEach(id => $(id).oninput = render);
 
@@ -57,7 +57,7 @@ function openDetail(r) {
   const sel = $('mInd'); sel.innerHTML = ['RSI', 'MACD', 'KAIRI', '%b', 'STOCH'].map(x => `<option ${x === r.ind ? 'selected' : ''}>${x}</option>`).join('');
   const draw = () => drawChart(d, sel.value, all, pats);
   curR = r; showTab(false); sel.onchange = draw; draw(); coinMatrix(r); setTv(r);
-  $('mList').innerHTML = pats.map(x => `<li class="${x.bull === null ? '' : x.bull ? 'bull' : 'bear'}"><b>${x.name}</b> – ${x.barsAgo} mum önce, ${x.gap} mum sürdü, fiyat ${fmt(x.p1)} → ${fmt(x.p2)}</li>`).join('') + all.map(x => `<li class="${x.bull ? 'bull' : 'bear'}"><b>${x.ind}</b> – ${x.type}: fiyat ${fmt(x.p1)} → ${fmt(x.p2)}, indikatör ${fmt(x.i1)} → ${fmt(x.i2)}, ${x.gap} mum arayla, ${x.barsAgo} mum önce</li>`).join('') || '<li>Bu varlıkta başka diverjans yok.</li>';
+  $('mList').innerHTML = pats.map(x => `<li class="${x.bull === null ? '' : x.bull ? 'bull' : 'bear'}"><b>${x.name}</b> – ${fmtFull(d.t[x.pts[0].i])} → ${fmtFull(d.t[Math.max(...x.pts.map(q => q.i))])} (${x.barsAgo} mum önce), fiyat ${fmt(x.p1)} → ${fmt(x.p2)}</li>`).join('') + all.map(x => `<li class="${x.bull ? 'bull' : 'bear'}"><b>${x.ind}</b> – ${x.type}: ${fmtFull(d.t[x.a])} → ${fmtFull(d.t[x.b])} (${x.barsAgo} mum önce), fiyat ${fmt(x.p1)} → ${fmt(x.p2)}, indikatör ${fmt(x.i1)} → ${fmt(x.i2)}</li>`).join('') || '<li>Bu varlıkta başka diverjans yok.</li>';
   $('mHow').textContent = r.none ? '' : r.ind === 'Formasyon' ? ({ 'Çift Tepe': 'İki benzer tepe ve aradaki vadi: yükseliş tükeniyor olabilir; vadinin altı kırılırsa düşüş teyit olur.', 'Çift Dip': 'İki benzer dip: düşüş tükeniyor olabilir; arasındaki tepe kırılırsa yükseliş teyit olur.', 'Omuz-Baş-Omuz': 'Ortadaki tepe en yüksek: trend dönüş formasyonu; boyun çizgisi kırılırsa düşüş beklenir.', 'Ters Omuz-Baş-Omuz': 'Ortadaki dip en düşük: dönüş formasyonu; boyun çizgisi kırılırsa yükseliş beklenir.', 'Yükselen Üçgen': 'Düz direnç, yükselen dipler: genelde yukarı kırılım beklenir.', 'Alçalan Üçgen': 'Düz destek, alçalan tepeler: genelde aşağı kırılım beklenir.', 'Simetrik Üçgen': 'Daralan fiyat: yön belirsiz, kırılım yönü takip edilmeli.' }[r.type] || '')
     : r.bull
     ? 'Yükseliş diverjansı: fiyat dip noktaları birbirine göre yön ayrışması gösteriyor; satış baskısı zayıflıyor olabilir, yukarı dönüş ihtimali artar.'
@@ -70,13 +70,19 @@ function drawChart(d, indName, all, pats) {
   lw = LC.createChart(el, {
     height: 460, layout: { background: { color: '#0f1020' }, textColor: '#9a9ab8', panes: { separatorColor: '#2b2b5a' } },
     grid: { vertLines: { color: '#1b1b3a' }, horzLines: { color: '#1b1b3a' } },
-    timeScale: { timeVisible: true, borderColor: '#2b2b5a' }, rightPriceScale: { borderColor: '#2b2b5a' }
+    localization: { locale: 'tr-TR', timeFormatter: t => fmtFull(t * 1000) },
+    timeScale: { timeVisible: true, borderColor: '#2b2b5a', tickMarkFormatter: (t, type) => { const dt = new Date(t * 1000); return type >= 3 ? dt.toLocaleTimeString('tr-TR', { ...TZ, hour: '2-digit', minute: '2-digit' }) : dt.toLocaleDateString('tr-TR', { ...TZ, day: '2-digit', month: '2-digit' }); } },
+    rightPriceScale: { borderColor: '#2b2b5a' }
   });
   const T = d.t.map(t => Math.floor(t / 1000)), n = d.c.length;
   const ok = i => i > 0 ? T[i] > T[i - 1] : true;
   const idx = [...Array(n).keys()].filter(ok);
   const candles = lw.addSeries(LC.CandlestickSeries, { upColor: '#3ddc97', downColor: '#ff6b6b', borderVisible: false, wickUpColor: '#3ddc97', wickDownColor: '#ff6b6b' }, 0);
   candles.setData(idx.map(i => ({ time: T[i], open: d.o[i], high: d.h[i], low: d.l[i], close: d.c[i] })));
+  const byTime = new Map(idx.map(i => [T[i], i]));
+  const legend = i => { $('lwLeg').innerHTML = `<b>${fmtFull(d.t[i])}</b> · A ${fmt(d.o[i])} · Y ${fmt(d.h[i])} · D ${fmt(d.l[i])} · K ${fmt(d.c[i])}`; };
+  legend(n - 1);
+  lw.subscribeCrosshairMove(pr => { const i = pr.time != null ? byTime.get(pr.time) : null; legend(i != null ? i : n - 1); });
   const ind = DivLib.indicators(d)[indName];
   const il = lw.addSeries(LC.LineSeries, { color: '#7c5cff', lineWidth: 2, priceLineVisible: false, title: indName }, 1);
   il.setData(idx.filter(i => ind[i] != null).map(i => ({ time: T[i], value: ind[i] })));
@@ -89,8 +95,8 @@ function drawChart(d, indName, all, pats) {
     const A = { time: T[r.a], value: r.p1 }, B = { time: T[r.b], value: r.p2 };
     const ps = seg(0, A, B, col, st, 2);
     LC.createSeriesMarkers(ps, [
-      { time: A.time, position: hi ? 'aboveBar' : 'belowBar', color: col, shape: 'circle' },
-      { time: B.time, position: hi ? 'aboveBar' : 'belowBar', color: col, shape: 'circle', text: r.type }
+      { time: A.time, position: hi ? 'aboveBar' : 'belowBar', color: col, shape: 'circle', text: fmtFull(d.t[r.a]) },
+      { time: B.time, position: hi ? 'aboveBar' : 'belowBar', color: col, shape: 'circle', text: r.type + ' · ' + fmtFull(d.t[r.b]) }
     ].sort((x, y) => x.time - y.time));
     seg(1, { time: T[r.a], value: r.i1 }, { time: T[r.b], value: r.i2 }, col, st, 2);
   });
@@ -100,7 +106,7 @@ function drawChart(d, indName, all, pats) {
     if (pts.length < 2) return;
     const sr = lw.addSeries(LC.LineSeries, { color: col, lineWidth: 3, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false }, 0);
     sr.setData(pts);
-    LC.createSeriesMarkers(sr, [{ time: pts[pts.length - 1].time, position: 'aboveBar', color: col, shape: 'arrowDown', text: p.name }]);
+    LC.createSeriesMarkers(sr, [{ time: pts[pts.length - 1].time, position: 'aboveBar', color: col, shape: 'arrowDown', text: p.name + ' · ' + fmtFull(pts[pts.length - 1].time * 1000) }]);
   });
   try { lw.panes()[1].setHeight(150); } catch (e) {}
   lw.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 150), to: n + 8 });
@@ -128,7 +134,9 @@ function sigs(sym, tf) {
   DivLib.findPatterns(d).forEach(x => put('Formasyon', x.bull, x.barsAgo, d.t[Math.max(...x.pts.map(p => p.i))]));
   sigCache.set(k, o); return o;
 }
-const fmtTime = (t, tf) => { const d = new Date(t), s = d.toLocaleDateString('tr-TR'); return ['5m', '15m', '1h', '4h'].includes(tf) ? s + ' ' + d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : s; };
+const TZ = { timeZone: 'Europe/Istanbul' };
+const fmtTime = (t, tf) => { const d = new Date(t), s = d.toLocaleDateString('tr-TR', TZ); return ['5m', '15m', '1h', '4h'].includes(tf) ? s + ' ' + d.toLocaleTimeString('tr-TR', { ...TZ, hour: '2-digit', minute: '2-digit' }) : s; };
+const fmtFull = t => new Date(t).toLocaleString('tr-TR', { ...TZ, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 const cellHtml = s => s ? `<td class="c ${s.bull === null ? 'neu' : s.bull ? 'bull' : 'bear'}" title="${s.barsAgo} mum önce"></td>` : '<td class="c"></td>';
 function rowCls(o) {
   const v = Object.values(o), b = v.some(x => x.bull === true), r = v.some(x => x.bull === false);

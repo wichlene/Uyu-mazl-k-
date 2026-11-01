@@ -30,7 +30,7 @@
       <label>İndikatör <select id="fInd"><option value="">Hepsi</option><option>RSI</option><option>MACD</option><option>KAIRI</option><option>%b</option><option>STOCH</option><option>Formasyon</option></select></label>
       <label>Ara <input id="fQ" placeholder="BTC, THYAO..."></label>
     </div>
-    <div class="scroll"><table id="tbl"><thead><tr><th>Piyasa</th><th>Sembol</th><th>Dilim</th><th>İndikatör</th><th>Diverjans</th><th>Kaç mum önce</th><th>Fiyat (eski → yeni)</th><th>İnd. (eski → yeni)</th></tr></thead><tbody></tbody></table></div>
+    <div class="scroll"><table id="tbl"><thead><tr><th>Piyasa</th><th>Sembol</th><th>Dilim</th><th>İndikatör</th><th>Diverjans</th><th>Sinyal zamanı</th><th>Kaç mum önce</th><th>Fiyat (eski → yeni)</th><th>İnd. (eski → yeni)</th></tr></thead><tbody></tbody></table></div>
     </div>
     <p class="note">Bilgi amaçlıdır, yatırım tavsiyesi değildir. Diverjans tek başına al/sat sinyali değildir.</p>
   </section>
@@ -40,7 +40,7 @@
 <button id="pineBtn" class="pine">Pine kodunu kopyala (TradingView içinde çizgi çizer)</button>
 <input id="tvLayout" placeholder="(Opsiyonel) Kayıtlı TradingView layout linkin: tradingview.com/chart/XXXX/ — indikatörlerin açılsın">
 <div class="tabs"><button id="tabLw" class="on">Çizgili grafik</button><button id="tabTv">TradingView canlı</button></div>
-<div id="lw"></div><div id="tvw" hidden></div>
+<div id="lwLeg" class="leg"></div><div id="lw"></div><div id="tvw" hidden></div>
 <p id="mHow" class="note"></p><h3>Tüm zaman dilimleri</h3><div class="scroll"><table id="mMat" class="mx"></table></div><h3>Bu varlıktaki tüm diverjanslar ve formasyonlar</h3><ul id="mList"></ul></div></div>
 <script src="lightweight-charts.js"></script>
 <script src="lib.js"></script>

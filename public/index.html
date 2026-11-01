@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uyuşmazlık Tarayıcı – Diverjans</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><h1>Uyuşmazlık Tarayıcı</h1><p>RSI · MACD · KAIRI · %b · Stokastik diverjans taraması</p></header>
+<main>
+  <section class="card">
+    <h3>Piyasalar</h3>
+    <div class="chips" id="markets"></div>
+    <h3>Zaman dilimleri</h3>
+    <div class="chips" id="tfs"></div>
+    <button id="go">Taramayı başlat</button>
+    <div id="status"></div><progress id="bar" value="0" max="1" hidden></progress>
+  </section>
+  <section class="card">
+    <div class="filters">
+      <label>Yön <select id="fDir"><option value="">Hepsi</option><option value="bull">Yükseliş</option><option value="bear">Düşüş</option></select></label>
+      <label>Tür <select id="fKind"><option value="">Hepsi</option><option value="normal">Normal</option><option value="gizli">Gizli</option></select></label>
+      <label>İndikatör <select id="fInd"><option value="">Hepsi</option><option>RSI</option><option>MACD</option><option>KAIRI</option><option>%b</option><option>STOCH</option></select></label>
+      <label>Ara <input id="fQ" placeholder="BTC, THYAO..."></label>
+    </div>
+    <div class="scroll"><table id="tbl"><thead><tr><th>Piyasa</th><th>Sembol</th><th>Dilim</th><th>İndikatör</th><th>Diverjans</th><th>Kaç mum önce</th><th>Fiyat (eski → yeni)</th><th>İnd. (eski → yeni)</th></tr></thead><tbody></tbody></table></div>
+    <p class="note">Bilgi amaçlıdır, yatırım tavsiyesi değildir. Diverjans tek başına al/sat sinyali değildir.</p>
+  </section>
+</main>
+<script src="lib.js"></script>
+<script src="app.js"></script>
+</body></html>

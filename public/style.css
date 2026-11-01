@@ -1,0 +1,21 @@
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;color:#e8e8f0;background:#0f1020;line-height:1.5}
+header{padding:1.5rem 1rem;text-align:center;background:linear-gradient(135deg,#1b1b3a,#3a1c71)}
+h1{margin:0;font-size:1.8rem}header p{margin:.3rem 0 0;opacity:.8}
+main{max-width:1100px;margin:0 auto;padding:1rem}
+.card{background:#171830;border-radius:12px;padding:1rem;margin-bottom:1rem}
+h3{margin:.2rem 0 .5rem;font-size:1rem}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem}
+.chip{background:#222244;padding:.4rem .8rem;border-radius:999px;cursor:pointer}
+.chip input{margin-right:.4rem}
+button{width:100%;padding:.8rem;border:0;border-radius:10px;background:#7c5cff;color:#fff;font-size:1rem;font-weight:600}
+button:disabled{opacity:.5}
+#status{margin:.7rem 0 .3rem;font-size:.9rem;opacity:.85}progress{width:100%}
+.filters{display:flex;flex-wrap:wrap;gap:.7rem;margin-bottom:.8rem}
+.filters label{display:flex;flex-direction:column;font-size:.8rem;gap:.2rem}
+select,input[id=fQ]{padding:.4rem;border-radius:6px;border:1px solid #333;background:#0f1020;color:#fff}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.85rem;white-space:nowrap}
+th,td{padding:.45rem .6rem;text-align:left;border-bottom:1px solid #26264a}
+tr.bull td:nth-child(5){color:#3ddc97}tr.bear td:nth-child(5){color:#ff6b6b}
+.note{font-size:.75rem;opacity:.6}

@@ -1,47 +1,92 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Uyuşmazlık Tarayıcı – Diverjans</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uyuşmazlık Tarayıcı · Diverjans ve Formasyon Taraması</title>
+<meta name="description" content="Kripto, NASDAQ, BIST ve emtialarda RSI, MACD, KAIRI, %b ve Stokastik diverjans taraması. 5 dakikadan aylığa tüm zaman dilimleri.">
+<meta name="theme-color" content="#0b0d1a">
+<meta property="og:title" content="Uyuşmazlık Tarayıcı">
+<meta property="og:description" content="Çoklu piyasa ve çoklu zaman dilimi diverjans tarayıcısı.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%237c5cff'/%3E%3Cpath d='M6 22l7-8 5 4 8-10' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header><h1>Uyuşmazlık Tarayıcı</h1><p>RSI · MACD · KAIRI · %b · Stokastik diverjans + klasik formasyon taraması</p></header>
-<main>
-  <section class="card">
-    <h3>Piyasalar</h3>
-    <div class="chips" id="markets"></div>
-    <h3>Zaman dilimleri</h3>
-    <div class="chips" id="tfs"></div>
-    <button id="go">Taramayı başlat</button>
-    <div id="status"></div><progress id="bar" value="0" max="1" hidden></progress>
+<header class="top">
+  <div class="wrap bar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#7c5cff"/><path d="M6 22l7-8 5 4 8-10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><div class="name">Uyuşmazlık Tarayıcı</div><div class="sub">Diverjans &amp; formasyon taraması</div></div>
+    </div>
+    <div class="meta"><span class="dot"></span> Canlı veri · Binance · Yahoo Finance</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>Piyasadaki uyuşmazlıkları saniyeler içinde bul.</h1>
+    <p>Kripto, NASDAQ, BIST ve emtialarda RSI, MACD, KAIRI, %b ve Stokastik diverjansı ile klasik formasyonları 5 dakikadan aylığa tüm zaman dilimlerinde tara.</p>
   </section>
+
   <section class="card">
-    <div class="tabs"><button id="vList" class="on">Liste</button><button id="vMat">Matris</button></div>
+    <div class="cardhead"><span class="step">1</span><h2>Tarama ayarları</h2></div>
+    <div class="grid2">
+      <div><h3>Piyasalar</h3><div class="chips" id="markets"></div></div>
+      <div><h3>Zaman dilimleri</h3><div class="chips" id="tfs"></div></div>
+    </div>
+    <button id="go" class="cta">Taramayı başlat</button>
+    <div id="status" role="status"></div><progress id="bar" value="0" max="1" hidden></progress>
+  </section>
+
+  <section class="stats" id="stats" hidden>
+    <div class="stat"><span class="k">Toplam sinyal</span><b id="sAll">0</b></div>
+    <div class="stat up"><span class="k">Yükseliş</span><b id="sBull">0</b></div>
+    <div class="stat down"><span class="k">Düşüş</span><b id="sBear">0</b></div>
+    <div class="stat"><span class="k">Taranan</span><b id="sScan">0</b></div>
+  </section>
+
+  <section class="card">
+    <div class="cardhead"><span class="step">2</span><h2>Sonuçlar</h2>
+      <div class="tabs"><button id="vList" class="on">Liste</button><button id="vMat">Matris</button></div>
+    </div>
     <div id="matView" hidden>
       <label class="mxsel">Zaman dilimi <select id="mxTf"></select></label>
       <div class="scroll"><table id="mx" class="mx"></table></div>
-      <p class="note">R=RSI · M=MACD · K=KAIRI · %b=Bollinger · S=Stokastik · F=Formasyon. Mavi: yükseliş, kırmızı: düşüş, mor: nötr. Satıra bas, detay açılsın.</p>
+      <p class="note">R=RSI · M=MACD · K=KAIRI · %b=Bollinger · S=Stokastik · F=Formasyon. Mavi: yükseliş, kırmızı: düşüş, mor: nötr. Satıra basınca detay açılır.</p>
     </div>
     <div id="listView">
-    <div class="filters">
-      <label>Yön <select id="fDir"><option value="">Hepsi</option><option value="bull">Yükseliş</option><option value="bear">Düşüş</option></select></label>
-      <label>Tür <select id="fKind"><option value="">Hepsi</option><option value="normal">Normal</option><option value="gizli">Gizli</option></select></label>
-      <label>İndikatör <select id="fInd"><option value="">Hepsi</option><option>RSI</option><option>MACD</option><option>KAIRI</option><option>%b</option><option>STOCH</option><option>Formasyon</option></select></label>
-      <label>Ara <input id="fQ" placeholder="BTC, THYAO..."></label>
+      <div class="filters">
+        <label>Yön <select id="fDir"><option value="">Hepsi</option><option value="bull">Yükseliş</option><option value="bear">Düşüş</option></select></label>
+        <label>Tür <select id="fKind"><option value="">Hepsi</option><option value="normal">Normal</option><option value="gizli">Gizli</option></select></label>
+        <label>İndikatör <select id="fInd"><option value="">Hepsi</option><option>RSI</option><option>MACD</option><option>KAIRI</option><option>%b</option><option>STOCH</option><option>Formasyon</option></select></label>
+        <label class="grow">Ara <input id="fQ" placeholder="BTC, THYAO, Altın…"></label>
+      </div>
+      <div class="scroll"><table id="tbl"><thead><tr><th>Piyasa</th><th>Sembol</th><th>Dilim</th><th>İndikatör</th><th>Diverjans</th><th>Sinyal zamanı</th><th>Mum önce</th><th>Fiyat</th><th>İndikatör değeri</th></tr></thead><tbody></tbody></table></div>
+      <div id="empty" class="empty">Henüz sonuç yok. Piyasa ve zaman dilimi seçip <b>Taramayı başlat</b>'a bas.</div>
     </div>
-    <div class="scroll"><table id="tbl"><thead><tr><th>Piyasa</th><th>Sembol</th><th>Dilim</th><th>İndikatör</th><th>Diverjans</th><th>Sinyal zamanı</th><th>Kaç mum önce</th><th>Fiyat (eski → yeni)</th><th>İnd. (eski → yeni)</th></tr></thead><tbody></tbody></table></div>
-    </div>
-    <p class="note">Bilgi amaçlıdır, yatırım tavsiyesi değildir. Diverjans tek başına al/sat sinyali değildir.</p>
   </section>
 </main>
-<div id="modal" hidden><div class="dlg"><button id="close">✕</button><h2 id="mTitle"></h2><div id="tfBadge"></div>
-<label>İndikatör <select id="mInd"></select></label><a id="tvBtn" class="tv" target="_blank" rel="noopener">TradingView'de aç ↗</a>
-<button id="pineBtn" class="pine">Pine kodunu kopyala (TradingView içinde çizgi çizer)</button>
-<input id="tvLayout" placeholder="(Opsiyonel) Kayıtlı TradingView layout linkin: tradingview.com/chart/XXXX/ — indikatörlerin açılsın">
-<div class="tabs"><button id="tabLw" class="on">Çizgili grafik</button><button id="tabTv">TradingView canlı</button></div>
-<div id="lwLeg" class="leg"></div><div id="lw"></div><div id="tvw" hidden></div>
-<p id="mHow" class="note"></p><h3>Tüm zaman dilimleri</h3><div class="scroll"><table id="mMat" class="mx"></table></div><h3>Bu varlıktaki tüm diverjanslar ve formasyonlar</h3><ul id="mList"></ul></div></div>
+
+<footer class="wrap foot">
+  <p>Bu sayfa bilgi amaçlıdır, yatırım tavsiyesi değildir. Diverjans tek başına al/sat sinyali değildir.</p>
+  <p>Veri: Binance (kripto), Yahoo Finance (hisse, emtia). Grafik: TradingView Lightweight Charts™.</p>
+</footer>
+
+<div id="modal" hidden><div class="dlg">
+  <button id="close" aria-label="Kapat">✕</button>
+  <h2 id="mTitle"></h2><div id="tfBadge"></div>
+  <div class="actions">
+    <label class="inl">İndikatör <select id="mInd"></select></label>
+    <a id="tvBtn" class="tv" target="_blank" rel="noopener">TradingView'de aç ↗</a>
+    <button id="pineBtn" class="pine">Pine kodunu kopyala</button>
+  </div>
+  <input id="tvLayout" placeholder="(Opsiyonel) TradingView layout linkin: tradingview.com/chart/XXXX/">
+  <div class="tabs"><button id="tabLw" class="on">Çizgili grafik</button><button id="tabTv">TradingView canlı</button></div>
+  <div id="lwLeg" class="leg"></div><div id="lw"></div><div id="tvw" hidden></div>
+  <p id="mHow" class="note"></p>
+  <h3>Tüm zaman dilimleri</h3><div class="scroll"><table id="mMat" class="mx"></table></div>
+  <h3>Bu varlıktaki tüm diverjanslar ve formasyonlar</h3><ul id="mList"></ul>
+</div></div>
 <script src="lightweight-charts.js"></script>
 <script src="lib.js"></script>
 <script src="app.js"></script>

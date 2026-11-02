@@ -41,7 +41,12 @@ function render() {
   const d = $('fDir').value, k = $('fKind').value, ind = $('fInd').value, q = $('fQ').value.toLowerCase();
   const rows = results.filter(r => (!d || (d === 'bull' ? r.bull === true : r.bull === false)) && (!k || (r.ind !== 'Formasyon' && r.type.includes(k))) && (!ind || r.ind === ind) && (!q || r.name.toLowerCase().includes(q)))
     .sort((a, b) => a.barsAgo - b.barsAgo);
-  $('tbl').tBodies[0].innerHTML = rows.map((r, i) => `<tr data-i="${results.indexOf(r)}" class="${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}"><td>${r.market}</td><td>${r.name}</td><td>${r.tf}</td><td>${r.ind}</td><td>${r.type}</td><td>${r.time ? fmtTime(r.time, r.tf) : '-'}</td><td>${r.barsAgo}</td><td>${fmt(r.p1)} → ${fmt(r.p2)}</td><td>${r.i1 == null ? '-' : fmt(r.i1) + ' → ' + fmt(r.i2)}</td></tr>`).join('');
+  $('empty').hidden = rows.length > 0;
+  $('empty').innerHTML = results.length ? 'Filtrelere uyan sonuç yok.' : 'Henüz sonuç yok. Piyasa ve zaman dilimi seçip <b>Taramayı başlat</b>\'a bas.';
+  $('stats').hidden = !results.length && !itemMap.size;
+  $('sAll').textContent = results.length; $('sBull').textContent = results.filter(r => r.bull === true).length;
+  $('sBear').textContent = results.filter(r => r.bull === false).length; $('sScan').textContent = itemMap.size;
+  $('tbl').tBodies[0].innerHTML = rows.map((r, i) => `<tr data-i="${results.indexOf(r)}"><td>${r.market}</td><td>${r.name}</td><td>${r.tf}</td><td>${r.ind}</td><td><span class="pill ${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}">${r.type}</span></td><td>${r.time ? fmtTime(r.time, r.tf) : '-'}</td><td>${r.barsAgo}</td><td>${fmt(r.p1)} → ${fmt(r.p2)}</td><td>${r.i1 == null ? '-' : fmt(r.i1) + ' → ' + fmt(r.i2)}</td></tr>`).join('');
 }
 ['fDir', 'fKind', 'fInd', 'fQ'].forEach(id => $(id).oninput = render);
 

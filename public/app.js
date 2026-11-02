@@ -28,7 +28,6 @@ $('go').onclick = async () => {
     const d = await fetch(`/api/candles?src=${it.src}&symbol=${encodeURIComponent(it.symbol)}&tf=${t}`).then(r => r.json());
     if (!d.c) return;
     store.set(it.symbol + '|' + t, d); itemMap.set(it.symbol, it);
-    for (const x of DivLib.findPatterns(d)) results.push({ ind: 'Formasyon', type: x.name, bull: x.bull, barsAgo: x.barsAgo, gap: x.gap, p1: x.p1, p2: x.p2, i1: null, i2: null, pts: x.pts, time: d.t[Math.max(...x.pts.map(q => q.i))], market: it.market, name: it.name, symbol: it.symbol, tf: t });
     for (const x of DivLib.findDivergences({ h: d.h, l: d.l, c: d.c })) results.push({ ...x, time: d.t[x.b], market: it.market, name: it.name, symbol: it.symbol, tf: t });
   });
   let done = 0; $('bar').hidden = false; $('bar').max = jobs.length;
@@ -40,24 +39,23 @@ $('go').onclick = async () => {
 };
 function render() {
   const d = $('fDir').value, k = $('fKind').value, ind = $('fInd').value, q = $('fQ').value.toLowerCase();
-  const rows = results.filter(r => (!d || (d === 'bull' ? r.bull === true : r.bull === false)) && (!k || (r.ind !== 'Formasyon' && r.type.includes(k))) && (!ind || r.ind === ind) && (!q || r.name.toLowerCase().includes(q)))
+  const rows = results.filter(r => (!d || (d === 'bull' ? r.bull === true : r.bull === false)) && (!k || r.type.includes(k)) && (!ind || r.ind === ind) && (!q || r.name.toLowerCase().includes(q)))
     .sort((a, b) => a.barsAgo - b.barsAgo);
   $('empty').hidden = rows.length > 0;
   $('empty').textContent = results.length ? 'Filtrelere uyan sinyal yok.' : (scanning ? 'Taranıyor…' : 'Henüz sinyal yok.');
   $('sAll').textContent = results.length; $('sBull').textContent = results.filter(r => r.bull === true).length;
   $('sBear').textContent = results.filter(r => r.bull === false).length; $('sScan').textContent = itemMap.size;
   $('feed').innerHTML = rows.slice(0, 400).map(r => `<div class="sig ${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}" data-i="${results.indexOf(r)}"><div class="s1"><b>${r.name}</b><span class="tf">${r.tf}</span><span class="pill ${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}">${r.type}</span></div><div class="s2">${r.ind} · ${r.time ? fmtTime(r.time, r.tf) : '-'} · ${r.barsAgo} mum önce · ${fmt(r.p1)} → ${fmt(r.p2)}</div></div>`).join('');
-  renderWatch();
+  renderWatch(); renderTicker();
 }
 ['fDir', 'fKind', 'fInd', 'fQ'].forEach(id => $(id).oninput = render);
 
 $('feed').onclick = e => { const el = e.target.closest('.sig'); if (el) { const r = results[+el.dataset.i]; curTf = r.tf; openDetail(r); } };
-$('wl').onclick = e => { const el = e.target.closest('.w'); if (el) loadAndOpen(el.dataset.sym, curTf); };
 $('wQ').oninput = renderWatch;
 $('tickTrack').onclick = e => { const el = e.target.closest('.tk'); if (el) loadAndOpen(el.dataset.sym, curTf); };
 let scanning = false, curTf = '1h', curSym = null;
 async function loadAndOpen(sym, tf) {
-  const it = itemMap.get(sym); if (!it) return;
+  const it = IT(sym); if (!it) return;
   curTf = tf;
   if (!store.has(sym + '|' + tf)) {
     try { const d = await fetch(`/api/candles?src=${it.src}&symbol=${encodeURIComponent(sym)}&tf=${tf}`).then(x => x.json()); if (d.c) store.set(sym + '|' + tf, d); } catch (e) {}
@@ -66,17 +64,63 @@ async function loadAndOpen(sym, tf) {
 }
 function lastChg(d) { const n = d.c.length; return n > 1 ? (d.c[n - 1] - d.c[n - 2]) / d.c[n - 2] * 100 : 0; }
 const chgHtml = c => `<span class="${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : ''}${c.toFixed(2)}%</span>`;
+let watch = []; try { watch = JSON.parse(localStorage.getItem('watch') || '[]'); } catch (e) {}
+const saveWatch = () => { try { localStorage.setItem('watch', JSON.stringify(watch)); } catch (e) {} };
+const IT = sym => itemMap.get(sym) || watch.find(w => w.symbol === sym);
+const tried = new Set();
+function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 2200); }
+function addWatch(sym, tf) {
+  const it = IT(sym); if (!it) return;
+  if (watch.some(w => w.symbol === sym && w.tf === tf)) return toast(`${it.name} · ${tf} zaten listede`);
+  watch.push({ symbol: sym, tf, name: it.name, market: it.market, src: it.src }); saveWatch(); renderWatch(); toast(`★ ${it.name} · ${tf} izleme listesine eklendi`);
+}
 function renderWatch() {
-  const q = $('wQ').value.toLowerCase(), tf = curTf;
-  const rows = [...itemMap.values()].filter(it => !q || it.name.toLowerCase().includes(q)).map(it => {
-    const d = store.get(it.symbol + '|' + tf), sg = d ? sigs(it.symbol, tf) : null, v = sg ? Object.values(sg) : [];
-    const b = v.some(x => x.bull === true), r = v.some(x => x.bull === false);
-    return { it, d, kind: b && r ? 'both' : b ? 'bull' : r ? 'bear' : '', n: v.length };
-  }).sort((a, b) => b.n - a.n || a.it.name.localeCompare(b.it.name));
-  $('wl').innerHTML = rows.map(r => `<div class="w ${r.it.symbol === curSym ? 'sel' : ''}" data-sym="${r.it.symbol}"><span class="n"><i class="dot ${r.kind}"></i>${r.it.name}<small>${r.it.market}</small></span><span>${r.d ? fmt(r.d.c[r.d.c.length - 1]) : '-'}</span><span>${r.d ? chgHtml(lastChg(r.d)) : '-'}</span></div>`).join('');
-  const tk = rows.filter(r => r.d).slice(0, 40).map(r => `<span class="tk" data-sym="${r.it.symbol}"><b>${r.it.name}</b>${fmt(r.d.c[r.d.c.length - 1])}<span>${chgHtml(lastChg(r.d))}</span></span>`).join('');
+  const q = $('wQ').value.toLowerCase();
+  const rows = watch.map((w, i) => ({ w, i })).filter(x => !q || x.w.name.toLowerCase().includes(q));
+  rows.forEach(({ w }) => {
+    const k = w.symbol + '|' + w.tf;
+    if (!store.has(k) && !tried.has(k)) { tried.add(k); fetch(`/api/candles?src=${w.src}&symbol=${encodeURIComponent(w.symbol)}&tf=${w.tf}`).then(r => r.json()).then(d => { if (d.c) { store.set(k, d); renderWatch(); } }).catch(() => {}); }
+  });
+  $('wl').innerHTML = rows.length ? rows.map(({ w, i }) => {
+    const d = store.get(w.symbol + '|' + w.tf), sg = d ? sigs(w.symbol, w.tf) : null, v = sg ? Object.values(sg) : [];
+    const b = v.some(x => x.bull === true), r = v.some(x => x.bull === false), kind = b && r ? 'both' : b ? 'bull' : r ? 'bear' : '';
+    return `<div class="w ${w.symbol === curSym && w.tf === curTf ? 'sel' : ''}" data-i="${i}"><span class="n"><i class="dot ${kind}"></i>${w.name}<small>${w.tf}</small></span><span>${d ? fmt(d.c[d.c.length - 1]) : '…'}</span><span>${d ? chgHtml(lastChg(d)) : ''}</span><button class="x" data-del="${i}" title="Listeden kaldır">×</button></div>`;
+  }).join('') : '<div class="wempty">İzleme listen boş.<br><small>Grafiğe veya bir sinyale <b>sağ tıkla</b> (telefonda uzun bas) ya da <b>★ İzleme</b> düğmesine bas.</small></div>';
+}
+function renderTicker() {
+  const tf = curTf;
+  const tk = [...itemMap.values()].map(it => ({ it, d: store.get(it.symbol + '|' + tf) })).filter(x => x.d).slice(0, 40).map(r => `<span class="tk" data-sym="${r.it.symbol}"><b>${r.it.name}</b>${fmt(r.d.c[r.d.c.length - 1])}<span>${chgHtml(lastChg(r.d))}</span></span>`).join('');
   $('tickTrack').innerHTML = tk + tk;
 }
+$('wl').onclick = e => {
+  const del = e.target.closest('[data-del]');
+  if (del) { watch.splice(+del.dataset.del, 1); saveWatch(); return renderWatch(); }
+  const el = e.target.closest('.w'); if (el) { const w = watch[+el.dataset.i]; if (w) loadAndOpen(w.symbol, w.tf); }
+};
+$('addW').onclick = () => curSym && addWatch(curSym, curTf);
+// sağ tık / uzun basış menüsü
+document.addEventListener('contextmenu', e => {
+  let sym = null, tf = null, del = null;
+  const sg = e.target.closest('.sig'), tk = e.target.closest('.tk'), w = e.target.closest('.w');
+  if (w) del = +w.dataset.i;
+  else if (sg) { const r = results[+sg.dataset.i]; sym = r.symbol; tf = r.tf; }
+  else if (tk) { sym = tk.dataset.sym; tf = curTf; }
+  else if (e.target.closest('#lw') && curSym) { sym = curSym; tf = curTf; }
+  else return;
+  e.preventDefault();
+  const m = $('ctx'), it = sym && IT(sym);
+  m.innerHTML = del != null ? `<button data-a="del">🗑 Listeden kaldır</button>` : `<button data-a="add">★ İzleme listesine ekle <b>${it ? it.name : ''} · ${tf}</b></button>`;
+  m.dataset.sym = sym || ''; m.dataset.tf = tf || ''; m.dataset.del = del == null ? '' : del;
+  m.hidden = false; m.style.left = Math.min(e.clientX, innerWidth - 270) + 'px'; m.style.top = Math.min(e.clientY, innerHeight - 60) + 'px';
+});
+$('ctx').onclick = e => {
+  const b = e.target.closest('button'), m = $('ctx'); if (!b) return;
+  if (b.dataset.a === 'add') addWatch(m.dataset.sym, m.dataset.tf);
+  else { watch.splice(+m.dataset.del, 1); saveWatch(); renderWatch(); }
+  m.hidden = true;
+};
+document.addEventListener('click', e => { if (!e.target.closest('#ctx')) $('ctx').hidden = true; });
+document.addEventListener('scroll', () => $('ctx').hidden = true, true);
 
 function openDetail(r) {
   const d = store.get(r.symbol + '|' + r.tf); if (!d) return;
@@ -85,8 +129,8 @@ function openDetail(r) {
   const ch = lastChg(d); $('hChg').innerHTML = chgHtml(ch);
   $('tfBar').innerHTML = TFS.map(t => `<button data-tf="${t}" class="${t === r.tf ? 'on' : ''}">${t}</button>`).join('');
   $('tfBar').onclick = e => { const b = e.target.closest('button'); if (b) loadAndOpen(r.symbol, b.dataset.tf); };
-  renderWatch();
-  const all = DivLib.findDivergences(d), pats = DivLib.findPatterns(d);
+  renderWatch(); renderTicker();
+  const all = DivLib.findDivergences(d), pats = [];
   $('mTitle').textContent = r.none ? `${r.name} · ${r.tf}` : `${r.name} · ${r.tf} · ${r.ind === 'Formasyon' ? r.type + ' formasyonu' : r.ind + ' ' + r.type + ' diverjansı'}`;
   const sel = $('mInd'); sel.innerHTML = ['RSI', 'MACD', 'KAIRI', '%b', 'STOCH'].map(x => `<option ${x === r.ind ? 'selected' : ''}>${x}</option>`).join('');
   const draw = () => drawChart(d, sel.value, all, pats);
@@ -121,6 +165,10 @@ function drawChart(d, indName, all, pats) {
   const ind = DivLib.indicators(d)[indName];
   const il = lw.addSeries(LC.LineSeries, { color: '#f0b429', lineWidth: 2, priceLineVisible: false, title: indName }, 1);
   il.setData(idx.filter(i => ind[i] != null).map(i => ({ time: T[i], value: ind[i] })));
+  const LV = { RSI: [[30, '#f6465d'], [50, '#4a5160'], [70, '#0ecb81']], STOCH: [[20, '#f6465d'], [50, '#4a5160'], [80, '#0ecb81']], '%b': [[0, '#f6465d'], [0.5, '#4a5160'], [1, '#0ecb81']], MACD: [[0, '#848e9c']], KAIRI: [[0, '#848e9c']] }[indName] || [];
+  const lo = Math.min(...LV.map(x => x[0])), hi = Math.max(...LV.map(x => x[0]));
+  il.applyOptions({ autoscaleInfoProvider: orig => { const r = orig(); if (!r) return { priceRange: { minValue: lo, maxValue: hi } }; r.priceRange.minValue = Math.min(r.priceRange.minValue, lo); r.priceRange.maxValue = Math.max(r.priceRange.maxValue, hi); return r; } });
+  LV.forEach(([v, c]) => il.createPriceLine({ price: v, color: c, lineWidth: 1, lineStyle: LC.LineStyle.Dashed, axisLabelVisible: true, title: '' }));
   const seg = (pane, p1, p2, col, style, w) => {
     const sr = lw.addSeries(LC.LineSeries, { color: col, lineWidth: w || 2, lineStyle: style, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false }, pane);
     sr.setData([p1, p2].sort((x, y) => x.time - y.time)); return sr;
@@ -151,7 +199,7 @@ function showTab(tv) {
   $('tabLw').className = tv ? '' : 'on'; $('tabTv').className = tv ? 'on' : '';
   if (!tv) return;
   const r = curR; if (!r) return;
-  const make = () => { $('tvw').innerHTML = '<div id="tvw_in"></div>'; new TradingView.widget({ container_id: 'tvw_in', symbol: tvSymbol(r), interval: TV_IV[r.tf], theme: 'dark', locale: 'tr', width: '100%', height: 460, style: '1', hide_side_toolbar: false, allow_symbol_change: true, studies: ['RSI@tv-basicstudies', 'MACD@tv-basicstudies', 'Stochastic@tv-basicstudies'] }); };
+  const make = () => { $('tvw').innerHTML = '<div id="tvw_in"></div>'; new TradingView.widget({ container_id: 'tvw_in', symbol: tvSymbol(r), interval: TV_IV[r.tf], theme: 'dark', locale: 'tr', autosize: true, style: '1', hide_side_toolbar: false, allow_symbol_change: true, studies: ['RSI@tv-basicstudies', 'MACD@tv-basicstudies', 'Stochastic@tv-basicstudies'] }); };
   if (window.TradingView) return make();
   const sc = document.createElement('script'); sc.src = 'https://s3.tradingview.com/tv.js'; sc.onload = make;
   sc.onerror = () => { $('tvw').textContent = 'TradingView yüklenemedi (internet / reklam engelleyici?). "TradingView\'de aç" butonunu kullan.'; };
@@ -160,13 +208,12 @@ function showTab(tv) {
 $('tabLw').onclick = () => showTab(false); $('tabTv').onclick = () => showTab(true);
 
 // ---- Matris görünümü (TradingView screener tarzı) ----
-const COLS = [['RSI', 'R'], ['MACD', 'M'], ['KAIRI', 'K'], ['%b', '%b'], ['STOCH', 'S'], ['Formasyon', 'F']];
+const COLS = [['RSI', 'R'], ['MACD', 'M'], ['KAIRI', 'K'], ['%b', '%b'], ['STOCH', 'S']];
 function sigs(sym, tf) {
   const k = sym + '|' + tf; if (sigCache.has(k)) return sigCache.get(k);
   const d = store.get(k); if (!d) return null;
   const o = {}, put = (key, bull, barsAgo, t) => { if (!o[key] || barsAgo < o[key].barsAgo) o[key] = { bull, barsAgo, t }; };
   DivLib.findDivergences(d).forEach(x => put(x.ind, x.bull, x.barsAgo, d.t[x.b]));
-  DivLib.findPatterns(d).forEach(x => put('Formasyon', x.bull, x.barsAgo, d.t[Math.max(...x.pts.map(p => p.i))]));
   sigCache.set(k, o); return o;
 }
 const TZ = { timeZone: 'Europe/Istanbul' };
@@ -179,7 +226,7 @@ function rowCls(o) {
 }
 const head = first => `<thead><tr>${first}${COLS.map(c => `<th title="${c[0]}">${c[1]}</th>`).join('')}<th>Sinyal zamanı</th></tr></thead>`;
 function pick(sym, tf) {
-  const it = itemMap.get(sym);
+  const it = IT(sym);
   const r = results.filter(x => x.symbol === sym && x.tf === tf).sort((a, b) => a.barsAgo - b.barsAgo)[0];
   if (r) return r;
   const o = sigs(sym, tf) || {}, best = Object.entries(o).sort((a, b) => a[1].barsAgo - b[1].barsAgo)[0];
@@ -211,7 +258,7 @@ $('bTfs').onclick = () => bt('tf'); $('bList').onclick = () => bt('list'); $('bM
 
 let mToken = 0;
 async function coinMatrix(r) {
-  const my = ++mToken, it = itemMap.get(r.symbol), el = $('mMat');
+  const my = ++mToken, it = IT(r.symbol), el = $('mMat');
   el.innerHTML = '<tbody><tr><td>Zaman dilimleri yükleniyor...</td></tr></tbody>';
   await Promise.all(TFS.filter(t => !store.has(r.symbol + '|' + t)).map(async t => {
     try { const d = await fetch(`/api/candles?src=${it.src}&symbol=${encodeURIComponent(r.symbol)}&tf=${t}`).then(x => x.json()); if (d.c) store.set(r.symbol + '|' + t, d); } catch (e) {}

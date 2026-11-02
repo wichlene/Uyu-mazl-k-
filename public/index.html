@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Uyuşmazlık Terminal · Diverjans & Formasyon Tarayıcı</title>
+<title>Uyuşmazlık Terminal · Diverjans Tarayıcı</title>
 <meta name="description" content="Kripto, NASDAQ, BIST ve emtialarda RSI, MACD, KAIRI, %b ve Stokastik diverjans taraması. Çoklu zaman dilimi, canlı grafik.">
 <meta name="theme-color" content="#0b0e11">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23f0b429'/%3E%3Cpath d='M6 22l7-8 5 4 8-10' fill='none' stroke='%23111' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
@@ -26,8 +26,8 @@
 
 <main class="term" id="term" data-m="chart">
   <aside class="panel watch">
-    <div class="ph-head"><b>İzleme listesi</b><input id="wQ" placeholder="Ara…"></div>
-    <div class="wh"><span>Sembol</span><span>Son fiyat</span><span>Değişim</span></div>
+    <div class="ph-head"><b>İzleme listem</b><input id="wQ" placeholder="Ara…"></div>
+    <div class="wh"><span>Sembol</span><span>Son fiyat</span><span>Değişim</span><span></span></div>
     <div id="wl"></div>
   </aside>
 
@@ -38,7 +38,7 @@
         <div class="sym"><b id="hSym"></b><span id="hPrice"></span><span id="hChg"></span></div>
         <div class="tfbar" id="tfBar"></div>
         <div class="tools">
-          <select id="mInd"></select>
+          <button id="addW" class="ghost">★ İzleme</button><select id="mInd"></select>
           <a id="tvBtn" class="tv" target="_blank" rel="noopener">TradingView ↗</a>
           <button id="pineBtn" class="ghost">Pine kodu</button>
         </div>
@@ -55,7 +55,7 @@
       <div id="pMx" hidden>
         <label class="mxsel">Zaman dilimi <select id="mxTf"></select></label>
         <div class="scroll"><table id="mx" class="mx"></table></div>
-        <p class="note">R=RSI · M=MACD · K=KAIRI · %b=Bollinger · S=Stokastik · F=Formasyon. Mavi: yükseliş, kırmızı: düşüş, mor: nötr.</p>
+        <p class="note">R=RSI · M=MACD · K=KAIRI · %b=Bollinger · S=Stokastik. Mavi: yükseliş, kırmızı: düşüş, mor: nötr.</p>
       </div>
     </div>
     <button id="close" hidden></button>
@@ -66,13 +66,14 @@
     <div class="filters">
       <select id="fDir"><option value="">Yön: hepsi</option><option value="bull">Yükseliş</option><option value="bear">Düşüş</option></select>
       <select id="fKind"><option value="">Tür: hepsi</option><option value="normal">Normal</option><option value="gizli">Gizli</option></select>
-      <select id="fInd"><option value="">İndikatör: hepsi</option><option>RSI</option><option>MACD</option><option>KAIRI</option><option>%b</option><option>STOCH</option><option>Formasyon</option></select>
+      <select id="fInd"><option value="">İndikatör: hepsi</option><option>RSI</option><option>MACD</option><option>KAIRI</option><option>%b</option><option>STOCH</option></select>
       <input id="fQ" placeholder="Ara…">
     </div>
     <div id="feed"></div>
     <div id="empty" class="empty">Sonuç yok.</div>
   </aside>
 </main>
+<div id="ctx" hidden></div><div id="toast" hidden></div>
 <nav id="mnav"><button data-m="chart" class="on"><i>📈</i>Grafik</button><button data-m="feed"><i>🔔</i>Sinyaller</button><button data-m="watch"><i>☰</i>İzleme</button></nav>
 <footer class="foot">Bilgi amaçlıdır, yatırım tavsiyesi değildir · Veri: Binance, Yahoo Finance · Grafik: TradingView Lightweight Charts™</footer>
 <script src="lightweight-charts.js"></script>

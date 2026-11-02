@@ -252,3 +252,12 @@ $('pineBtn').onclick = async () => {
 };
 
 $('go').click();
+
+// ---- Mobil sekme çubuğu ----
+const setM = m => { $('term').dataset.m = m; document.querySelectorAll('#mnav button').forEach(b => b.className = b.dataset.m === m ? 'on' : ''); };
+$('mnav').onclick = e => { const b = e.target.closest('button'); if (b) setM(b.dataset.m); };
+const mobile = () => matchMedia('(max-width:1000px)').matches;
+const _open = openDetail;
+openDetail = function (r) { _open(r); if (mobile()) { setM('chart'); window.scrollTo(0, 0); } };
+
+$('cfg').onclick = () => $('tb').classList.toggle('open');

@@ -10,10 +10,11 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="tb">
+<header class="tb" id="tb">
   <div class="brand"><svg class="logo" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#f0b429"/><path d="M6 22l7-8 5 4 8-10" fill="none" stroke="#111" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><b>UYUŞMAZLIK</b><span>Terminal</span></div>
-  <div class="grp"><span class="lbl">Piyasa</span><div class="chips" id="markets"></div></div>
-  <div class="grp"><span class="lbl">Dilim</span><div class="chips" id="tfs"></div></div>
+  <div class="grp gm"><span class="lbl">Piyasa</span><div class="chips" id="markets"></div></div>
+  <div class="grp gt"><span class="lbl">Dilim</span><div class="chips" id="tfs"></div></div>
+  <button id="cfg" aria-label="Ayarlar">⚙ Ayar</button>
   <button id="go" class="cta">Tara</button>
   <div class="stats" id="stats">
     <span>Sinyal <b id="sAll">0</b></span><span class="up">▲ <b id="sBull">0</b></span><span class="down">▼ <b id="sBear">0</b></span><span>Taranan <b id="sScan">0</b></span>
@@ -23,7 +24,7 @@
 <progress id="bar" value="0" max="1" hidden></progress>
 <div id="ticker"><div class="track" id="tickTrack"></div></div>
 
-<main class="term">
+<main class="term" id="term" data-m="chart">
   <aside class="panel watch">
     <div class="ph-head"><b>İzleme listesi</b><input id="wQ" placeholder="Ara…"></div>
     <div class="wh"><span>Sembol</span><span>Son fiyat</span><span>Değişim</span></div>
@@ -44,7 +45,7 @@
       </div>
       <div class="sub2"><h2 id="mTitle"></h2><span id="tfBadge"></span></div>
       <div class="tabs"><button id="tabLw" class="on">Çizgili grafik</button><button id="tabTv">TradingView canlı</button></div>
-      <input id="tvLayout" placeholder="(Opsiyonel) TradingView layout linki: tradingview.com/chart/XXXX/">
+      <details class="more"><summary>TradingView ayarı</summary><input id="tvLayout" placeholder="Layout linki: tradingview.com/chart/XXXX/"></details>
       <div id="lwLeg" class="leg"></div>
       <div id="lw"></div><div id="tvw" hidden></div>
       <p id="mHow" class="note"></p>
@@ -72,6 +73,7 @@
     <div id="empty" class="empty">Sonuç yok.</div>
   </aside>
 </main>
+<nav id="mnav"><button data-m="chart" class="on"><i>📈</i>Grafik</button><button data-m="feed"><i>🔔</i>Sinyaller</button><button data-m="watch"><i>☰</i>İzleme</button></nav>
 <footer class="foot">Bilgi amaçlıdır, yatırım tavsiyesi değildir · Veri: Binance, Yahoo Finance · Grafik: TradingView Lightweight Charts™</footer>
 <script src="lightweight-charts.js"></script>
 <script src="lib.js"></script>

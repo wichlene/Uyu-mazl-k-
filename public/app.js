@@ -19,7 +19,7 @@ async function pool(tasks, n, step) {
 $('go').onclick = async () => {
   const mk = picked($('markets')), tf = picked($('tfs'));
   if (!mk.length || !tf.length) return alert('En az bir piyasa ve zaman dilimi seç');
-  $('go').disabled = true; results.length = 0; store.clear(); sigCache.clear(); itemMap.clear(); render();
+  $('go').disabled = true; scanning = true; results.length = 0; store.clear(); sigCache.clear(); itemMap.clear(); render();
   $('status').textContent = 'Liste alınıyor...';
   const uni = await fetch('/api/universe').then(r => r.json());
   const items = uni.items.filter(x => mk.includes(x.market));
@@ -35,28 +35,57 @@ $('go').onclick = async () => {
   await pool(jobs, 8, () => { $('bar').value = ++done; $('status').textContent = `Taranıyor ${done}/${jobs.length} · bulunan: ${results.length}`; if (done % 10 === 0) render(); });
   fillTfs(tf);
   $('status').textContent = `Bitti. ${items.length} varlık × ${tf.length} dilim tarandı, ${results.length} diverjans bulundu.`;
-  $('bar').hidden = true; $('go').disabled = false; render(); fillTfs(tf);
+  scanning = false; $('bar').hidden = true; $('go').disabled = false; if (!tf.includes(curTf)) curTf = tf[0]; render(); fillTfs(tf);
+  if (!curSym) { const first = itemMap.has('BTCUSDT') ? 'BTCUSDT' : [...itemMap.keys()][0]; if (first) loadAndOpen(first, curTf); }
 };
 function render() {
   const d = $('fDir').value, k = $('fKind').value, ind = $('fInd').value, q = $('fQ').value.toLowerCase();
   const rows = results.filter(r => (!d || (d === 'bull' ? r.bull === true : r.bull === false)) && (!k || (r.ind !== 'Formasyon' && r.type.includes(k))) && (!ind || r.ind === ind) && (!q || r.name.toLowerCase().includes(q)))
     .sort((a, b) => a.barsAgo - b.barsAgo);
   $('empty').hidden = rows.length > 0;
-  $('empty').innerHTML = results.length ? 'Filtrelere uyan sonuç yok.' : 'Henüz sonuç yok. Piyasa ve zaman dilimi seçip <b>Taramayı başlat</b>\'a bas.';
-  $('stats').hidden = !results.length && !itemMap.size;
+  $('empty').textContent = results.length ? 'Filtrelere uyan sinyal yok.' : (scanning ? 'Taranıyor…' : 'Henüz sinyal yok.');
   $('sAll').textContent = results.length; $('sBull').textContent = results.filter(r => r.bull === true).length;
   $('sBear').textContent = results.filter(r => r.bull === false).length; $('sScan').textContent = itemMap.size;
-  $('tbl').tBodies[0].innerHTML = rows.map((r, i) => `<tr data-i="${results.indexOf(r)}"><td>${r.market}</td><td>${r.name}</td><td>${r.tf}</td><td>${r.ind}</td><td><span class="pill ${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}">${r.type}</span></td><td>${r.time ? fmtTime(r.time, r.tf) : '-'}</td><td>${r.barsAgo}</td><td>${fmt(r.p1)} → ${fmt(r.p2)}</td><td>${r.i1 == null ? '-' : fmt(r.i1) + ' → ' + fmt(r.i2)}</td></tr>`).join('');
+  $('feed').innerHTML = rows.slice(0, 400).map(r => `<div class="sig ${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}" data-i="${results.indexOf(r)}"><div class="s1"><b>${r.name}</b><span class="tf">${r.tf}</span><span class="pill ${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}">${r.type}</span></div><div class="s2">${r.ind} · ${r.time ? fmtTime(r.time, r.tf) : '-'} · ${r.barsAgo} mum önce · ${fmt(r.p1)} → ${fmt(r.p2)}</div></div>`).join('');
+  renderWatch();
 }
 ['fDir', 'fKind', 'fInd', 'fQ'].forEach(id => $(id).oninput = render);
 
-$('tbl').tBodies[0].onclick = e => { const tr = e.target.closest('tr'); if (tr) openDetail(results[+tr.dataset.i]); };
-$('close').onclick = () => $('modal').hidden = true;
-$('modal').onclick = e => { if (e.target === $('modal')) $('modal').hidden = true; };
+$('feed').onclick = e => { const el = e.target.closest('.sig'); if (el) { const r = results[+el.dataset.i]; curTf = r.tf; openDetail(r); } };
+$('wl').onclick = e => { const el = e.target.closest('.w'); if (el) loadAndOpen(el.dataset.sym, curTf); };
+$('wQ').oninput = renderWatch;
+$('tickTrack').onclick = e => { const el = e.target.closest('.tk'); if (el) loadAndOpen(el.dataset.sym, curTf); };
+let scanning = false, curTf = '1h', curSym = null;
+async function loadAndOpen(sym, tf) {
+  const it = itemMap.get(sym); if (!it) return;
+  curTf = tf;
+  if (!store.has(sym + '|' + tf)) {
+    try { const d = await fetch(`/api/candles?src=${it.src}&symbol=${encodeURIComponent(sym)}&tf=${tf}`).then(x => x.json()); if (d.c) store.set(sym + '|' + tf, d); } catch (e) {}
+  }
+  if (store.has(sym + '|' + tf)) openDetail(pick(sym, tf));
+}
+function lastChg(d) { const n = d.c.length; return n > 1 ? (d.c[n - 1] - d.c[n - 2]) / d.c[n - 2] * 100 : 0; }
+const chgHtml = c => `<span class="${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : ''}${c.toFixed(2)}%</span>`;
+function renderWatch() {
+  const q = $('wQ').value.toLowerCase(), tf = curTf;
+  const rows = [...itemMap.values()].filter(it => !q || it.name.toLowerCase().includes(q)).map(it => {
+    const d = store.get(it.symbol + '|' + tf), sg = d ? sigs(it.symbol, tf) : null, v = sg ? Object.values(sg) : [];
+    const b = v.some(x => x.bull === true), r = v.some(x => x.bull === false);
+    return { it, d, kind: b && r ? 'both' : b ? 'bull' : r ? 'bear' : '', n: v.length };
+  }).sort((a, b) => b.n - a.n || a.it.name.localeCompare(b.it.name));
+  $('wl').innerHTML = rows.map(r => `<div class="w ${r.it.symbol === curSym ? 'sel' : ''}" data-sym="${r.it.symbol}"><span class="n"><i class="dot ${r.kind}"></i>${r.it.name}<small>${r.it.market}</small></span><span>${r.d ? fmt(r.d.c[r.d.c.length - 1]) : '-'}</span><span>${r.d ? chgHtml(lastChg(r.d)) : '-'}</span></div>`).join('');
+  const tk = rows.filter(r => r.d).slice(0, 40).map(r => `<span class="tk" data-sym="${r.it.symbol}"><b>${r.it.name}</b>${fmt(r.d.c[r.d.c.length - 1])}<span>${chgHtml(lastChg(r.d))}</span></span>`).join('');
+  $('tickTrack').innerHTML = tk + tk;
+}
 
 function openDetail(r) {
   const d = store.get(r.symbol + '|' + r.tf); if (!d) return;
-  $('modal').hidden = false;
+  $('modal').hidden = false; $('ph').hidden = true; curSym = r.symbol; curTf = r.tf;
+  $('hSym').textContent = r.name; $('hPrice').textContent = fmt(d.c[d.c.length - 1]);
+  const ch = lastChg(d); $('hChg').innerHTML = chgHtml(ch);
+  $('tfBar').innerHTML = TFS.map(t => `<button data-tf="${t}" class="${t === r.tf ? 'on' : ''}">${t}</button>`).join('');
+  $('tfBar').onclick = e => { const b = e.target.closest('button'); if (b) loadAndOpen(r.symbol, b.dataset.tf); };
+  renderWatch();
   const all = DivLib.findDivergences(d), pats = DivLib.findPatterns(d);
   $('mTitle').textContent = r.none ? `${r.name} · ${r.tf}` : `${r.name} · ${r.tf} · ${r.ind === 'Formasyon' ? r.type + ' formasyonu' : r.ind + ' ' + r.type + ' diverjansı'}`;
   const sel = $('mInd'); sel.innerHTML = ['RSI', 'MACD', 'KAIRI', '%b', 'STOCH'].map(x => `<option ${x === r.ind ? 'selected' : ''}>${x}</option>`).join('');
@@ -74,23 +103,23 @@ function drawChart(d, indName, all, pats) {
   const LC = LightweightCharts, el = $('lw');
   if (lw) { lw.remove(); lw = null; }
   lw = LC.createChart(el, {
-    height: 460, layout: { background: { color: '#0f1020' }, textColor: '#9a9ab8', panes: { separatorColor: '#2b2b5a' } },
-    grid: { vertLines: { color: '#1b1b3a' }, horzLines: { color: '#1b1b3a' } },
+    autoSize: true, layout: { background: { color: '#161a1e' }, textColor: '#848e9c', panes: { separatorColor: '#2b3139' } },
+    grid: { vertLines: { color: '#20262d' }, horzLines: { color: '#20262d' } },
     localization: { locale: 'tr-TR', timeFormatter: t => fmtFull(t * 1000) },
-    timeScale: { timeVisible: true, borderColor: '#2b2b5a', tickMarkFormatter: (t, type) => { const dt = new Date(t * 1000); return type >= 3 ? dt.toLocaleTimeString('tr-TR', { ...TZ, hour: '2-digit', minute: '2-digit' }) : dt.toLocaleDateString('tr-TR', { ...TZ, day: '2-digit', month: '2-digit' }); } },
-    rightPriceScale: { borderColor: '#2b2b5a' }
+    timeScale: { timeVisible: true, borderColor: '#2b3139', tickMarkFormatter: (t, type) => { const dt = new Date(t * 1000); return type >= 3 ? dt.toLocaleTimeString('tr-TR', { ...TZ, hour: '2-digit', minute: '2-digit' }) : dt.toLocaleDateString('tr-TR', { ...TZ, day: '2-digit', month: '2-digit' }); } },
+    rightPriceScale: { borderColor: '#2b3139' }
   });
   const T = d.t.map(t => Math.floor(t / 1000)), n = d.c.length;
   const ok = i => i > 0 ? T[i] > T[i - 1] : true;
   const idx = [...Array(n).keys()].filter(ok);
-  const candles = lw.addSeries(LC.CandlestickSeries, { upColor: '#3ddc97', downColor: '#ff6b6b', borderVisible: false, wickUpColor: '#3ddc97', wickDownColor: '#ff6b6b' }, 0);
+  const candles = lw.addSeries(LC.CandlestickSeries, { upColor: '#0ecb81', downColor: '#f6465d', borderVisible: false, wickUpColor: '#0ecb81', wickDownColor: '#f6465d' }, 0);
   candles.setData(idx.map(i => ({ time: T[i], open: d.o[i], high: d.h[i], low: d.l[i], close: d.c[i] })));
   const byTime = new Map(idx.map(i => [T[i], i]));
   const legend = i => { $('lwLeg').innerHTML = `<b>${TF_TR[curR.tf]}</b> · <b>${fmtFull(d.t[i])}</b> · A ${fmt(d.o[i])} · Y ${fmt(d.h[i])} · D ${fmt(d.l[i])} · K ${fmt(d.c[i])}`; };
   legend(n - 1);
   lw.subscribeCrosshairMove(pr => { const i = pr.time != null ? byTime.get(pr.time) : null; legend(i != null ? i : n - 1); });
   const ind = DivLib.indicators(d)[indName];
-  const il = lw.addSeries(LC.LineSeries, { color: '#7c5cff', lineWidth: 2, priceLineVisible: false, title: indName }, 1);
+  const il = lw.addSeries(LC.LineSeries, { color: '#f0b429', lineWidth: 2, priceLineVisible: false, title: indName }, 1);
   il.setData(idx.filter(i => ind[i] != null).map(i => ({ time: T[i], value: ind[i] })));
   const seg = (pane, p1, p2, col, style, w) => {
     const sr = lw.addSeries(LC.LineSeries, { color: col, lineWidth: w || 2, lineStyle: style, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false }, pane);
@@ -173,8 +202,12 @@ function renderMatrix() {
 }
 $('mxTf').onchange = renderMatrix;
 $('mx').onclick = e => { const tr = e.target.closest('tr[data-sym]'); if (tr) openDetail(pick(tr.dataset.sym, $('mxTf').value)); };
-$('vList').onclick = () => { $('listView').hidden = false; $('matView').hidden = true; $('vList').className = 'on'; $('vMat').className = ''; };
-$('vMat').onclick = () => { $('listView').hidden = true; $('matView').hidden = false; $('vMat').className = 'on'; $('vList').className = ''; renderMatrix(); };
+function bt(k) {
+  $('pTf').hidden = k !== 'tf'; $('mList').hidden = k !== 'list'; $('pMx').hidden = k !== 'mx';
+  $('bTfs').className = k === 'tf' ? 'on' : ''; $('bList').className = k === 'list' ? 'on' : ''; $('bMx').className = k === 'mx' ? 'on' : '';
+  if (k === 'mx') renderMatrix();
+}
+$('bTfs').onclick = () => bt('tf'); $('bList').onclick = () => bt('list'); $('bMx').onclick = () => bt('mx');
 
 let mToken = 0;
 async function coinMatrix(r) {
@@ -217,3 +250,5 @@ $('pineBtn').onclick = async () => {
   try { await navigator.clipboard.writeText(code); $('pineBtn').textContent = 'Kopyalandı ✓ TradingView > Pine Editor > yapıştır > Grafiğe ekle'; }
   catch (e) { prompt('Kodu kopyala:', code); }
 };
+
+$('go').click();

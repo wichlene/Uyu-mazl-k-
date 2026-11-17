@@ -145,3 +145,5 @@ details.more{margin:2px 0}details.more summary{cursor:pointer;color:var(--mu);fo
 #toast{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:70;background:var(--p2);border:1px solid var(--ac);color:var(--tx);padding:8px 14px;border-radius:6px;box-shadow:0 8px 24px #000a}
 #tvw_in{width:100%;height:100%}
 @media(min-width:1001px){#toast{bottom:40px}}
+
+.chip.early{display:inline-flex;margin-left:4px}.chip.early input{display:none}

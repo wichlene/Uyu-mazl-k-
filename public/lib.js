@@ -68,15 +68,29 @@
   function indicators({ h, l, c }) {
     return { RSI: rsi(c), MACD: macd(c), KAIRI: kairi(c), '%b': percentB(c), STOCH: stoch(h, l, c) };
   }
+  // Tepe/dip listesi: eski olanlar sağında R mumla onaylı; son R mumdaki aday ise onaysız (gecikmesiz) eklenir
+  function pivotList(arr, L, R, type, noCand) {
+    const n = arr.length, conf = pivots(arr, L, R, type), better = (x, y) => type === 'high' ? x > y : x < y;
+    if (noCand) return { list: conf, early: -1 };
+    for (let j = n - 1; j >= Math.max(L, n - R); j--) {
+      let ok = true;
+      for (let k = j - L; k < n && ok; k++) { if (k === j) continue; if (k < j ? !better(arr[j], arr[k]) : better(arr[k], arr[j])) ok = false; }  // solda katı, sağda eşitlik serbest (pivots() ile aynı kural)
+      if (ok) { const keep = conf.filter(i => j - i > L); keep.push(j); return { list: keep, early: j }; }
+    }
+    return { list: conf, early: -1 };
+  }
   // Son iki tepe/dip üzerinden normal ve gizli diverjans
+  // right: eski tepe/dip onayı için sağdaki mum sayısı; son `right` mum onaysız aday olarak değerlendirilir
   function findDivergences(ohlc, opts = {}) {
-    const { pivot = 4, minGap = 5, maxGap = 80, recent = 12 } = opts;
+    if (ohlc.live) ohlc = { h: ohlc.h.slice(0, -1), l: ohlc.l.slice(0, -1), c: ohlc.c.slice(0, -1) };  // kapanmamış son mumu atla
+    const { left = 4, right = opts.noEarly ? 4 : 2, minGap = 5, maxGap = 80, recent = 12 } = opts;
     const { h, l, c } = ohlc, n = c.length, res = [];
     if (n < 60) return res;
     const inds = indicators(ohlc);
-    const ph = pivots(h, pivot, pivot, 'high'), pl = pivots(l, pivot, pivot, 'low');
+    const PH = pivotList(h, left, right, 'high', opts.noEarly), PL = pivotList(l, left, right, 'low', opts.noEarly);
     for (const [name, v] of Object.entries(inds)) {
-      const test = (piv, price, isHigh) => {
+      const test = (P, price, isHigh) => {
+        const piv = P.list;
         if (piv.length < 2) return;
         const b = piv[piv.length - 1], a = piv[piv.length - 2];
         if (b - a < minGap || b - a > maxGap || n - 1 - b > recent) return;
@@ -86,9 +100,9 @@
         let type = null;
         if (isHigh) { if (pUp && iDn) type = 'Düşüş (normal)'; else if (pDn && iUp) type = 'Düşüş (gizli)'; }
         else { if (pDn && iUp) type = 'Yükseliş (normal)'; else if (pUp && iDn) type = 'Yükseliş (gizli)'; }
-        if (type) res.push({ ind: name, type, bull: type.startsWith('Yük'), barsAgo: n - 1 - b, gap: b - a, a, b, p1: price[a], p2: price[b], i1: v[a], i2: v[b] });
+        if (type) res.push({ ind: name, type, bull: type.startsWith('Yük'), barsAgo: n - 1 - b, early: b === P.early, gap: b - a, a, b, p1: price[a], p2: price[b], i1: v[a], i2: v[b] });
       };
-      test(ph, h, true); test(pl, l, false);
+      test(PH, h, true); test(PL, l, false);
     }
     return res;
   }
@@ -135,6 +149,6 @@
     }
     return out;
   }
-  const api = { findPatterns, indicators, sma, ema, rsi, macd, kairi, percentB, stoch, pivots, findDivergences };
+  const api = { pivotList, findPatterns, indicators, sma, ema, rsi, macd, kairi, percentB, stoch, pivots, findDivergences };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.DivLib = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -1,7 +1,8 @@
 //@version=5
 indicator("Uyuşmazlık Diverjans (RSI/MACD/KAIRI/%b/Stoch)", overlay=true, max_lines_count=200, max_labels_count=200)
 
-pv        = input.int(4, "Pivot genişliği (sol=sağ)", minval=2)
+pvL       = input.int(4, "Pivot solu (mum)", minval=2)
+pvR       = input.int(1, "Pivot sağı: onay mumu (1 = en erken, 4 = eski/gecikmeli)", minval=1)
 minGap    = input.int(5, "İki tepe/dip arası min mum", minval=1)
 maxGap    = input.int(80, "İki tepe/dip arası max mum", minval=5)
 showHid   = input.bool(true, "Gizli diverjansı da göster")
@@ -23,7 +24,7 @@ stochV = ta.sma(ta.sma(ta.stoch(close, high, low, 14), 3), 3)
 
 names   = array.from("RSI", "MACD", "KAIRI", "%b", "STOCH")
 enabled = array.from(useRSI, useMACD, useKAIRI, usePB, useSTOCH)
-vals    = array.from(rsiV[pv], macdL[pv], kairiV[pv], pbV[pv], stochV[pv])
+vals    = array.from(rsiV[pvR], macdL[pvR], kairiV[pvR], pbV[pvR], stochV[pvR])
 
 // Durum: [0]=önceki pivot, [1]=son pivot
 var int[]   hBars  = array.new_int(2, na)
@@ -41,7 +42,7 @@ process(bool isHigh, int[] bars, float[] prices, float[] inds, float newPrice) =
     for i = 0 to 4
         array.set(inds, i, array.get(inds, i + 5))
         array.set(inds, i + 5, array.get(vals, i))
-    array.set(bars, 1, bar_index - pv)
+    array.set(bars, 1, bar_index - pvR)
     array.set(prices, 1, newPrice)
     barA = array.get(bars, 0)
     barB = array.get(bars, 1)
@@ -75,8 +76,8 @@ process(bool isHigh, int[] bars, float[] prices, float[] inds, float newPrice) =
             label.new(barB, pB, (isHigh ? "Düşüş gizli: " : "Yükseliş gizli: ") + hidTxt, xloc.bar_index, yloc.price, color.new(col, 85), col, isHigh ? label.style_label_down : label.style_label_up, size.small)
     true
 
-ph = ta.pivothigh(high, pv, pv)
-pl = ta.pivotlow(low, pv, pv)
+ph = ta.pivothigh(high, pvL, pvR)
+pl = ta.pivotlow(low, pvL, pvR)
 if not na(ph)
     process(true, hBars, hPrice, hInds, ph)
 if not na(pl)

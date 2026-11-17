@@ -1,6 +1,8 @@
 const MARKETS = ['Kripto', 'NASDAQ', 'BIST', 'Emtia'];
 const TFS = ['5m', '15m', '1h', '4h', '1d', '1w', '1M'];
 const $ = id => document.getElementById(id);
+let earlyOn = true; try { earlyOn = localStorage.getItem('early') !== '0'; } catch (e) {}
+const divOpts = () => earlyOn ? {} : { noEarly: true };
 const results = [], store = new Map(), itemMap = new Map(), sigCache = new Map();
 function chips(el, list, on) {
   el.innerHTML = list.map(x => `<label class="chip"><input type="checkbox" value="${x}" ${on.includes(x) ? 'checked' : ''}>${x}</label>`).join('');
@@ -28,7 +30,7 @@ $('go').onclick = async () => {
     const d = await fetch(`/api/candles?src=${it.src}&symbol=${encodeURIComponent(it.symbol)}&tf=${t}`).then(r => r.json());
     if (!d.c) return;
     store.set(it.symbol + '|' + t, d); itemMap.set(it.symbol, it);
-    for (const x of DivLib.findDivergences({ h: d.h, l: d.l, c: d.c })) results.push({ ...x, time: d.t[x.b], market: it.market, name: it.name, symbol: it.symbol, tf: t });
+    for (const x of DivLib.findDivergences(d, divOpts())) results.push({ ...x, time: d.t[x.b], market: it.market, name: it.name, symbol: it.symbol, tf: t });
   });
   let done = 0; $('bar').hidden = false; $('bar').max = jobs.length;
   await pool(jobs, 8, () => { $('bar').value = ++done; $('status').textContent = `Taranıyor ${done}/${jobs.length} · bulunan: ${results.length}`; if (done % 10 === 0) render(); });
@@ -45,7 +47,7 @@ function render() {
   $('empty').textContent = results.length ? 'Filtrelere uyan sinyal yok.' : (scanning ? 'Taranıyor…' : 'Henüz sinyal yok.');
   $('sAll').textContent = results.length; $('sBull').textContent = results.filter(r => r.bull === true).length;
   $('sBear').textContent = results.filter(r => r.bull === false).length; $('sScan').textContent = itemMap.size;
-  $('feed').innerHTML = rows.slice(0, 400).map(r => `<div class="sig ${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}" data-i="${results.indexOf(r)}"><div class="s1"><b>${r.name}</b><span class="tf">${r.tf}</span><span class="pill ${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}">${r.type}</span></div><div class="s2">${r.ind} · ${r.time ? fmtTime(r.time, r.tf) : '-'} · ${r.barsAgo} mum önce · ${fmt(r.p1)} → ${fmt(r.p2)}</div></div>`).join('');
+  $('feed').innerHTML = rows.slice(0, 400).map(r => `<div class="sig ${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}" data-i="${results.indexOf(r)}"><div class="s1"><b>${r.name}</b><span class="tf">${r.tf}</span><span class="pill ${r.bull === null ? 'neu' : r.bull ? 'bull' : 'bear'}">${r.type}</span></div><div class="s2">${r.ind} · ${r.time ? fmtTime(r.time, r.tf) : '-'} · ${r.barsAgo === 0 ? '⚡ son mum' : r.barsAgo + ' mum önce'} · ${fmt(r.p1)} → ${fmt(r.p2)}</div></div>`).join('');
   renderWatch(); renderTicker();
 }
 ['fDir', 'fKind', 'fInd', 'fQ'].forEach(id => $(id).oninput = render);
@@ -130,12 +132,12 @@ function openDetail(r) {
   $('tfBar').innerHTML = TFS.map(t => `<button data-tf="${t}" class="${t === r.tf ? 'on' : ''}">${t}</button>`).join('');
   $('tfBar').onclick = e => { const b = e.target.closest('button'); if (b) loadAndOpen(r.symbol, b.dataset.tf); };
   renderWatch(); renderTicker();
-  const all = DivLib.findDivergences(d), pats = [];
+  const all = DivLib.findDivergences(d, divOpts()), pats = [];
   $('mTitle').textContent = r.none ? `${r.name} · ${r.tf}` : `${r.name} · ${r.tf} · ${r.ind === 'Formasyon' ? r.type + ' formasyonu' : r.ind + ' ' + r.type + ' diverjansı'}`;
   const sel = $('mInd'); sel.innerHTML = ['RSI', 'MACD', 'KAIRI', '%b', 'STOCH'].map(x => `<option ${x === r.ind ? 'selected' : ''}>${x}</option>`).join('');
   const draw = () => drawChart(d, sel.value, all, pats);
   curR = r; $('tfBadge').textContent = '⏱ ' + TF_TR[r.tf] + ' grafik'; showTab(false); sel.onchange = draw; draw(); coinMatrix(r); setTv(r);
-  $('mList').innerHTML = pats.map(x => `<li class="${x.bull === null ? '' : x.bull ? 'bull' : 'bear'}"><b>${x.name}</b> – ${fmtFull(d.t[x.pts[0].i])} → ${fmtFull(d.t[Math.max(...x.pts.map(q => q.i))])} (${x.barsAgo} mum önce), fiyat ${fmt(x.p1)} → ${fmt(x.p2)}</li>`).join('') + all.map(x => `<li class="${x.bull ? 'bull' : 'bear'}"><b>${x.ind}</b> – ${x.type}: ${fmtFull(d.t[x.a])} → ${fmtFull(d.t[x.b])} (${x.barsAgo} mum önce), fiyat ${fmt(x.p1)} → ${fmt(x.p2)}, indikatör ${fmt(x.i1)} → ${fmt(x.i2)}</li>`).join('') || '<li>Bu varlıkta başka diverjans yok.</li>';
+  $('mList').innerHTML = pats.map(x => `<li class="${x.bull === null ? '' : x.bull ? 'bull' : 'bear'}"><b>${x.name}</b> – ${fmtFull(d.t[x.pts[0].i])} → ${fmtFull(d.t[Math.max(...x.pts.map(q => q.i))])} (${x.barsAgo} mum önce), fiyat ${fmt(x.p1)} → ${fmt(x.p2)}</li>`).join('') + all.map(x => `<li class="${x.bull ? 'bull' : 'bear'}"><b>${x.ind}</b> – ${x.type}: ${fmtFull(d.t[x.a])} → ${fmtFull(d.t[x.b])} (${x.barsAgo === 0 ? 'son kapanmış mum' : x.barsAgo + ' mum önce'}), fiyat ${fmt(x.p1)} → ${fmt(x.p2)}, indikatör ${fmt(x.i1)} → ${fmt(x.i2)}</li>`).join('') || '<li>Bu varlıkta başka diverjans yok.</li>';
   $('mHow').textContent = r.none ? '' : r.ind === 'Formasyon' ? ({ 'Çift Tepe': 'İki benzer tepe ve aradaki vadi: yükseliş tükeniyor olabilir; vadinin altı kırılırsa düşüş teyit olur.', 'Çift Dip': 'İki benzer dip: düşüş tükeniyor olabilir; arasındaki tepe kırılırsa yükseliş teyit olur.', 'Omuz-Baş-Omuz': 'Ortadaki tepe en yüksek: trend dönüş formasyonu; boyun çizgisi kırılırsa düşüş beklenir.', 'Ters Omuz-Baş-Omuz': 'Ortadaki dip en düşük: dönüş formasyonu; boyun çizgisi kırılırsa yükseliş beklenir.', 'Yükselen Üçgen': 'Düz direnç, yükselen dipler: genelde yukarı kırılım beklenir.', 'Alçalan Üçgen': 'Düz destek, alçalan tepeler: genelde aşağı kırılım beklenir.', 'Simetrik Üçgen': 'Daralan fiyat: yön belirsiz, kırılım yönü takip edilmeli.' }[r.type] || '')
     : r.bull
     ? 'Yükseliş diverjansı: fiyat dip noktaları birbirine göre yön ayrışması gösteriyor; satış baskısı zayıflıyor olabilir, yukarı dönüş ihtimali artar.'
@@ -213,7 +215,7 @@ function sigs(sym, tf) {
   const k = sym + '|' + tf; if (sigCache.has(k)) return sigCache.get(k);
   const d = store.get(k); if (!d) return null;
   const o = {}, put = (key, bull, barsAgo, t) => { if (!o[key] || barsAgo < o[key].barsAgo) o[key] = { bull, barsAgo, t }; };
-  DivLib.findDivergences(d).forEach(x => put(x.ind, x.bull, x.barsAgo, d.t[x.b]));
+  DivLib.findDivergences(d, divOpts()).forEach(x => put(x.ind, x.bull, x.barsAgo, d.t[x.b]));
   sigCache.set(k, o); return o;
 }
 const TZ = { timeZone: 'Europe/Istanbul' };
@@ -308,3 +310,12 @@ const _open = openDetail;
 openDetail = function (r) { _open(r); if (mobile()) { setM('chart'); window.scrollTo(0, 0); } };
 
 $('cfg').onclick = () => $('tb').classList.toggle('open');
+
+// ⚡ Erken sinyal anahtarı
+$('early').checked = earlyOn;
+$('early').onchange = () => {
+  earlyOn = $('early').checked; try { localStorage.setItem('early', earlyOn ? '1' : '0'); } catch (e) {}
+  sigCache.clear(); results.length = 0;
+  const scanTfs = picked($('tfs')); for (const [k, d] of store) { const [sym, tf] = k.split('|'), it = itemMap.get(sym); if (!it || !scanTfs.includes(tf)) continue; for (const x of DivLib.findDivergences(d, divOpts())) results.push({ ...x, time: d.t[x.b], market: it.market, name: it.name, symbol: sym, tf }); }
+  render(); if (curSym) loadAndOpen(curSym, curTf); toast(earlyOn ? '⚡ Erken sinyal açık: mum kapanır kapanmaz' : 'Erken sinyal kapalı: onaylı tepe/dip (4 mum gecikmeli)');
+};

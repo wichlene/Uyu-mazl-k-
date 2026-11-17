@@ -36,7 +36,9 @@ module.exports = async (req, res) => {
       if (tf === '4h') r = aggregate(r, 4);
       for (const key of Object.keys(r)) r[key] = r[key].slice(-300);
     }
-    res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate');
+    const MS = { '5m': 3e5, '15m': 9e5, '1h': 36e5, '4h': 144e5, '1d': 864e5, '1w': 6048e5, '1M': 2678e6 };
+    r.live = r.t.length > 0 && r.t[r.t.length - 1] + MS[tf] > Date.now();   // son mum henüz kapanmadı
+    res.setHeader('Cache-Control', 's-maxage=20, stale-while-revalidate');
     res.json(r);
   } catch (e) { res.status(502).json({ error: String(e.message || e) }); }
 };
